@@ -419,12 +419,27 @@ export default function MusicPlayer() {
         setShowPlaylistPicker(false);
     }, [neteaseId]);
 
-    const openShareViaChat = useCallback(() => {
+    const [showShareModal, setShowShareModal] = useState(false);
+
+    const doShareToChat = useCallback(() => {
         if (!player.currentTrack) return;
+        setShowShareModal(false);
         window.dispatchEvent(new CustomEvent("open-mini-chat", {
             detail: { share: { type: "music", title: player.currentTrack.title, artist: player.currentTrack.artist } },
         }));
     }, [player.currentTrack]);
+
+    const openShareModal = useCallback(() => {
+        setShowShareModal(true);
+    }, []);
+
+    const openTogetherRoom = useCallback(() => {
+        setShowShareModal(false);
+        setView("together");
+        if (!companionBubble) {
+            triggerCompanionReaction();
+        }
+    }, [companionBubble, triggerCompanionReaction]);
 
     const openMiniChat = useCallback(() => {
         window.dispatchEvent(new CustomEvent("open-mini-chat"));
@@ -590,7 +605,7 @@ export default function MusicPlayer() {
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                         </svg>
                     </button>
-                    <button className="music-player-ctrl-btn mp-top-btn" onClick={openShareViaChat} title="分享到聊天">
+                    <button className="music-player-ctrl-btn mp-top-btn" onClick={openShareModal} title="分享 / 一起听">
                         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
@@ -1062,6 +1077,47 @@ export default function MusicPlayer() {
             {addResult && (
                 <div className={`music-toast ${addResult.ok ? "music-toast-ok" : "music-toast-err"}`}>
                     {addResult.ok ? "✓ " : "✗ "}{addResult.message}
+                </div>
+            )}
+
+            {/* Share / Together Action Modal */}
+            {showShareModal && (
+                <div className="music-playlist-picker-overlay" onClick={() => setShowShareModal(false)}>
+                    <div className="music-share-action-drawer" onClick={e => e.stopPropagation()}>
+                        <div className="music-share-drawer-header">
+                            <span>分享与互动</span>
+                            <button className="music-playlist-picker-close" onClick={() => setShowShareModal(false)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                            </button>
+                        </div>
+                        <div className="music-share-options-list">
+                            <button className="music-share-opt-card highlight" onClick={openTogetherRoom}>
+                                <div className="music-share-opt-icon">
+                                    {activeCompanion?.avatar ? (
+                                        <img src={activeCompanion.avatar} alt="" />
+                                    ) : (
+                                        <span>💖</span>
+                                    )}
+                                </div>
+                                <div className="music-share-opt-info">
+                                    <div className="music-share-opt-title">和 {activeCompanion?.name || "TA"} 一起听歌</div>
+                                    <div className="music-share-opt-desc">进入独立伴听空间：长挂双方头像、黑胶旋转、调节回应频率</div>
+                                </div>
+                                <span className="music-share-opt-arrow">👉</span>
+                            </button>
+
+                            <button className="music-share-opt-card" onClick={doShareToChat}>
+                                <div className="music-share-opt-icon" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <span>💬</span>
+                                </div>
+                                <div className="music-share-opt-info">
+                                    <div className="music-share-opt-title">分享卡片到聊天室</div>
+                                    <div className="music-share-opt-desc">向角色发送当前歌曲卡片，邀请聊天</div>
+                                </div>
+                                <span className="music-share-opt-arrow">›</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
