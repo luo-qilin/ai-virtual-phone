@@ -61,7 +61,7 @@ function formatCount(value: number): string {
 }
 
 type PlayerStyle = "modern" | "vinyl";
-type BodyView = "cover" | "lyrics";
+type BodyView = "cover" | "lyrics" | "together";
 
 export default function MusicPlayer() {
     const player = useMusicPlayer();
@@ -545,11 +545,38 @@ export default function MusicPlayer() {
                     </svg>
                 </button>
                 <div className="mp-titles">
-                    <div className="mp-song" {...(view === "lyrics" ? { "data-glow": "" } : {})}>{track.title}</div>
-                    <button className="mp-artist" onClick={openArtistPage}>
-                        {track.artist || "未知歌手"}
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m9 5 7 7-7 7" /></svg>
-                    </button>
+                    <div className="mp-header-tab-group">
+                        <button
+                            className={`mp-header-tab-btn ${view === "cover" ? "active" : ""}`}
+                            onClick={() => setView("cover")}
+                        >
+                            唱片
+                        </button>
+                        <button
+                            className={`mp-header-tab-btn ${view === "lyrics" ? "active" : ""}`}
+                            onClick={() => {
+                                setView("lyrics");
+                                if (!player.currentTrack?.lyrics) player.fetchLyrics();
+                            }}
+                        >
+                            歌词
+                        </button>
+                        <button
+                            className={`mp-header-tab-btn mp-header-tab-together ${view === "together" ? "active" : ""}`}
+                            onClick={() => {
+                                setView("together");
+                                if (!companionBubble) triggerCompanionReaction();
+                            }}
+                        >
+                            <span className="mp-together-dot" />
+                            一起听
+                        </button>
+                    </div>
+                    {view !== "together" && (
+                        <div className="mp-song-sub" style={{ fontSize: 11, opacity: 0.7, marginTop: 2, textAlign: "center", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {track.title} - {track.artist || "未知歌手"}
+                        </div>
+                    )}
                 </div>
                 <div className="mp-top-actions">
                     <button className="music-player-ctrl-btn mp-top-btn" onClick={togglePlayerStyle} title={playerStyle === "vinyl" ? "切换现代样式" : "切换黑胶样式"}>
@@ -571,7 +598,160 @@ export default function MusicPlayer() {
                 </div>
             </div>
 
-            {/* Body — cover / vinyl / glow lyrics */}
+            {/* Body — cover / vinyl / glow lyrics / together */}
+            {view === "together" ? (
+                <div className="together-view-container">
+                    {/* 1. 顶部双方长挂头像栏 */}
+                    <div className="together-duo-bar">
+                        <div className="together-user-node">
+                            <div className="together-avatar-wrap">
+                                {userProfile.avatar ? (
+                                    <img src={userProfile.avatar} alt="我" className="together-avatar-img" />
+                                ) : (
+                                    <div className="together-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#333' }}>👤</div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="together-name-text">{userProfile.name}</div>
+                                <div className="together-sub-text">我</div>
+                            </div>
+                        </div>
+
+                        <div className="together-link-bridge">
+                            <span className="together-heart-icon">💖</span>
+                            <div className="together-wave-line">
+                                <span className="together-wave-bar" />
+                                <span className="together-wave-bar" />
+                                <span className="together-wave-bar" />
+                            </div>
+                            <span style={{ fontSize: 9, color: '#f472b6', fontWeight: 600 }}>一起听中</span>
+                        </div>
+
+                        <div className="together-char-node" onClick={() => setShowCharPicker(true)} style={{ cursor: 'pointer' }} title="点击切换陪伴角色">
+                            <div className="together-avatar-wrap">
+                                {activeCompanion?.avatar ? (
+                                    <img src={activeCompanion.avatar} alt={activeCompanion.name} className="together-avatar-img" />
+                                ) : (
+                                    <div className="together-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#444' }}>✨</div>
+                                )}
+                                <span className="together-switch-badge">⇄</span>
+                            </div>
+                            <div>
+                                <div className="together-name-text">{activeCompanion?.name || "选角色"}</div>
+                                <div className="together-sub-text" style={{ color: '#ec4899' }}>点击换人</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. 伴听角色实时吐槽/共鸣气泡 */}
+                    <div className="together-bubble-box" onClick={triggerCompanionReaction} style={{ cursor: 'pointer' }} title="点击立即让TA发表感想">
+                        <div className="together-bubble-arrow" />
+                        <div>{companionBubble || `「${activeCompanion?.name || 'TA'}正在静静陪伴你听歌，点击我发表心声~」`}</div>
+                    </div>
+
+                    {/* 3. 中下部黑胶唱片与唱针 */}
+                    <div className="together-vinyl-wrap">
+                        <svg className={`together-stylus ${player.isPlaying ? 'playing' : ''}`} viewBox="0 0 100 200" fill="none">
+                            <path d="M20,10 L20,65 L50,105 L50,145" stroke="#999" strokeWidth="4" strokeLinecap="round" />
+                            <circle cx="20" cy="10" r="8" fill="#555" />
+                            <rect x="44" y="140" width="12" height="20" rx="2" fill="#d1d5db" />
+                        </svg>
+                        <div className={`together-vinyl-disc ${player.isPlaying ? 'playing' : ''}`}>
+                            <div className="together-vinyl-grooves" />
+                            {track.coverUrl ? (
+                                <img src={track.coverUrl} alt="" className="together-vinyl-cover" />
+                            ) : (
+                                <div className="together-vinyl-cover" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#333' }}>🎵</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 4. 歌曲名与歌手 */}
+                    <div className="together-meta">
+                        <div className="together-title">{track.title}</div>
+                        <div className="together-artist">{track.artist || "未知歌手"}</div>
+                    </div>
+
+                    {/* 5. 角色回应频率调节器 (像观影软件一样) */}
+                    <div className="together-freq-box">
+                        <div className="together-freq-header">
+                            <span>角色回应频率：{togetherFreq === "dense" ? "话痨 (20s)" : togetherFreq === "normal" ? "适中 (45s)" : togetherFreq === "sparse" ? "偶尔 (90s)" : "安静 (手动)"}</span>
+                            <button className="together-poke-btn" onClick={triggerCompanionReaction}>
+                                ✨ 戳TA说两句
+                            </button>
+                        </div>
+                        <div className="together-freq-btns">
+                            <div
+                                className={`together-freq-pill ${togetherFreq === "dense" ? "active" : ""}`}
+                                onClick={() => { setTogetherFreq("dense"); kvSet("music_together_freq", "dense"); }}
+                            >
+                                话痨(20s)
+                            </div>
+                            <div
+                                className={`together-freq-pill ${togetherFreq === "normal" ? "active" : ""}`}
+                                onClick={() => { setTogetherFreq("normal"); kvSet("music_together_freq", "normal"); }}
+                            >
+                                适中(45s)
+                            </div>
+                            <div
+                                className={`together-freq-pill ${togetherFreq === "sparse" ? "active" : ""}`}
+                                onClick={() => { setTogetherFreq("sparse"); kvSet("music_together_freq", "sparse"); }}
+                            >
+                                偶尔(90s)
+                            </div>
+                            <div
+                                className={`together-freq-pill ${togetherFreq === "quiet" ? "active" : ""}`}
+                                onClick={() => { setTogetherFreq("quiet"); kvSet("music_together_freq", "quiet"); }}
+                            >
+                                安静
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 6. 底部控制栏：切换歌曲、关闭歌曲 */}
+                    <div className="together-action-bar">
+                        <button className="together-ctrl-btn" onClick={handlePrev} title="上一首">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                            </svg>
+                        </button>
+                        <button className="together-ctrl-btn play-main" onClick={player.togglePlay} title={player.isPlaying ? "暂停" : "播放"}>
+                            {player.isPlaying ? (
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 4h4v16H6zm8 0h4v16h-4z" />
+                                </svg>
+                            ) : (
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                            )}
+                        </button>
+                        <button className="together-ctrl-btn" onClick={handleNext} title="下一首">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 18l8.5-6L6 6v12zm8.5 0h2V6h-2v12z" />
+                            </svg>
+                        </button>
+                        <button className="together-ctrl-btn" onClick={() => setShowQueue(true)} title="播放列表">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                            </svg>
+                        </button>
+                        <button
+                            className="together-ctrl-btn close-track"
+                            onClick={() => {
+                                player.pause();
+                                player.closeFullPlayer();
+                            }}
+                            title="关闭歌曲并退出"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
             <div className="mp-body">
                 {view === "lyrics" ? (
                     <div className="mp-lyrics-wrap" onClick={() => setView("cover")}>
