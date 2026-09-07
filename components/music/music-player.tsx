@@ -435,17 +435,27 @@ export default function MusicPlayer() {
         setShowShareModal(true);
     }, []);
 
-    const openShareViaChat = useCallback((shareData: any) => {
-        if (!shareData || !shareData.roleId) return;
-        setView("together");
-        setSelectedCharId(shareData.roleId);
-        setShowShareModal(false);
-        setTogetherFreq("normal");
-    }, []);
+    // 强制挂载到全局作用域，确保页面构建产物能直接访问
+    if (typeof window !== 'undefined') {
+        (window as any).openShareViaChat = (shareData: any) => {
+            // 注意：这里无法直接访问组件内部 state，我们将逻辑改写为触发自定义事件
+            window.dispatchEvent(new CustomEvent("music-player-open-together", { detail: shareData }));
+        };
+    }
 
+    // 在组件内监听该事件并执行状态变更
     useEffect(() => {
-        (window as any).openShareViaChat = openShareViaChat;
-    }, [openShareViaChat]);
+        const handler = (e: any) => {
+            const shareData = e.detail;
+            if (!shareData || !shareData.roleId) return;
+            setView("together");
+            setSelectedCharId(shareData.roleId);
+            setShowShareModal(false);
+            setTogetherFreq("normal");
+        };
+        window.addEventListener("music-player-open-together", handler);
+        return () => window.removeEventListener("music-player-open-together", handler);
+    }, []);
 
     const openTogetherRoom = useCallback(() => {
         setShowShareModal(false);
