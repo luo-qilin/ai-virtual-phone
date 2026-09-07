@@ -711,18 +711,7 @@ export default function MusicPlayer() {
                     )}
                     <span>喜欢</span>
                 </button>
-                <button
-                    className="mp-social-btn"
-                    onClick={() => {
-                        if (!isNeteaseTrack) { showMusicToast("本地歌曲暂无评论区"); return; }
-                        setShowComments(true);
-                    }}
-                >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L4 21l1.5-4.3A8.5 8.5 0 1 1 21 12z" />
-                    </svg>
-                    <span>{commentTotal > 0 ? formatCount(commentTotal) : "评论"}</span>
-                </button>
+
                 <button className="mp-social-btn" onClick={openShareViaChat}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
@@ -864,16 +853,7 @@ export default function MusicPlayer() {
                 </div>
             )}
 
-            {/* Comments overlay */}
-            {showComments && neteaseId > 0 && (
-                <MusicCommentsPage
-                    songId={neteaseId}
-                    title={track.title}
-                    artist={track.artist}
-                    coverUrl={track.coverUrl}
-                    onClose={() => setShowComments(false)}
-                />
-            )}
+
 
             {/* Artist overlay */}
             {artistView && (
