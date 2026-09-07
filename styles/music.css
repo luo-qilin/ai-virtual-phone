@@ -1949,6 +1949,42 @@
     margin-top: 8px;
 }
 
+/* ── Floating Desktop Lyrics ── */
+.music-float-lyrics-pill {
+    position: absolute;
+    z-index: 54;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    max-width: 90%;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.music-float-lyrics-pill:active {
+    cursor: grabbing;
+    transform: scale(0.98);
+}
+.music-float-lyrics-text {
+    font-size: calc(13px * var(--app-text-scale, 1));
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: #ffffff;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(236, 72, 153, 0.6);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
 .music-qr-wrap {
     display: flex;
     justify-content: center;
