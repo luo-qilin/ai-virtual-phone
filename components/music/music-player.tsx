@@ -15,7 +15,7 @@ import {
     type NeteasePlaylist,
 } from "@/lib/music-service";
 import { loadCharacters } from "@/lib/character-storage";
-import { loadApiConfigs, loadBindingConfig, resolveBinding, loadSettings } from "@/lib/settings-storage";
+import { loadApiConfigs, loadBindingConfig, resolveBinding, loadUserIdentities } from "@/lib/settings-storage";
 import { buildProviderRequest, parseProviderResponse } from "@/lib/llm-provider-adapter";
 import { fetchLlmPayload } from "@/lib/llm-http";
 import type { Character } from "@/lib/character-types";
@@ -96,9 +96,11 @@ export default function MusicPlayer() {
             }
         }
         try {
-            const s = loadSettings();
-            if (s?.user) {
-                setUserProfile({ name: s.user.name || "我", avatar: s.user.avatar || "" });
+            const identities = loadUserIdentities();
+            const activeId = kvGet("settings_active_identity_id");
+            const active = identities.find(i => i.id === activeId) || identities[0];
+            if (active) {
+                setUserProfile({ name: active.name || "我", avatar: active.avatarUrl || "" });
             }
         } catch { /* ignore */ }
         const savedFreq = kvGet("music_together_freq");
@@ -932,7 +934,7 @@ export default function MusicPlayer() {
                     <span>分享</span>
                 </button>
                 {characters.length > 0 && (
-                    <button className="mp-social-btn mp-companion-btn" onClick={() => { setViewMode("together"); triggerCompanionReaction(); }} onContextMenu={(e) => { e.preventDefault(); setShowCharPicker(true); }} title="点击进入伴听空间，长按/右键换陪伴角色">
+                    <button className="mp-social-btn mp-companion-btn" onClick={openTogetherRoom} onContextMenu={(e) => { e.preventDefault(); setShowCharPicker(true); }} title="点击进入伴听空间，长按/右键换陪伴角色">
                         {activeCompanion?.avatar ? (
                             <img src={activeCompanion.avatar} alt="" className="mp-companion-btn-avatar" />
                         ) : (
@@ -946,7 +948,7 @@ export default function MusicPlayer() {
             )}
 
             {/* Companion Thought Bubble (仅在普通模式展示独立浮层) */}
-            {viewMode !== "together" && companionBubble && (
+            {view !== "together" && companionBubble && (
                 <div className="mp-companion-bubble-wrap" onClick={() => setCompanionBubble(null)}>
                     <div className="mp-companion-bubble">
                         {activeCompanion?.avatar && <img src={activeCompanion.avatar} alt="" className="mp-bubble-avatar" />}
