@@ -435,6 +435,18 @@ export default function MusicPlayer() {
         setShowShareModal(true);
     }, []);
 
+    const openShareViaChat = useCallback((shareData: any) => {
+        if (!shareData || !shareData.roleId) return;
+        setView("together");
+        setSelectedCharId(shareData.roleId);
+        setShowShareModal(false);
+        setTogetherFreq("normal");
+    }, []);
+
+    useEffect(() => {
+        (window as any).openShareViaChat = openShareViaChat;
+    }, [openShareViaChat]);
+
     const openTogetherRoom = useCallback(() => {
         setShowShareModal(false);
         setView("together");
