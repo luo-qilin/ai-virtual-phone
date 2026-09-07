@@ -621,14 +621,14 @@ export default function MusicPlayer() {
                     <div className="together-duo-bar">
                         <div className="together-user-node">
                             <div className="together-avatar-wrap">
-                                {userProfile.avatar ? (
+                                {userProfile?.avatar ? (
                                     <img src={userProfile.avatar} alt="我" className="together-avatar-img" />
                                 ) : (
                                     <div className="together-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#333' }}>👤</div>
                                 )}
                             </div>
                             <div>
-                                <div className="together-name-text">{userProfile.name}</div>
+                                <div className="together-name-text">{userProfile?.name || "我"}</div>
                                 <div className="together-sub-text">我</div>
                             </div>
                         </div>
@@ -724,7 +724,7 @@ export default function MusicPlayer() {
                         </div>
                     </div>
 
-                    {/* 6. 底部控制栏：切换歌曲、关闭歌曲 */}
+                    {/* 6. 底部控制栏：切换歌曲、关闭歌曲、返回唱片 */}
                     <div className="together-action-bar">
                         <button className="together-ctrl-btn" onClick={handlePrev} title="上一首">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -750,6 +750,11 @@ export default function MusicPlayer() {
                         <button className="together-ctrl-btn" onClick={() => setShowQueue(true)} title="播放列表">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                                 <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                            </svg>
+                        </button>
+                        <button className="together-ctrl-btn" onClick={() => setView("cover")} title="返回唱片">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="12" cy="12" r="4" />
                             </svg>
                         </button>
                         <button
