@@ -18,6 +18,7 @@ import { loadCharacters } from "@/lib/character-storage";
 import { loadApiConfigs, loadBindingConfig, resolveBinding } from "@/lib/settings-storage";
 import { buildProviderRequest, parseProviderResponse } from "@/lib/llm-provider-adapter";
 import { fetchLlmPayload } from "@/lib/llm-http";
+import { loadUserProfile } from "@/lib/user-profile-storage";
 import type { Character } from "@/lib/character-types";
 import MusicCommentsPage from "./music-comments";
 import MusicArtistPage from "./music-artist";
@@ -81,6 +82,8 @@ export default function MusicPlayer() {
     const [companionBubble, setCompanionBubble] = useState<string | null>(null);
     const [isGeneratingReaction, setIsGeneratingReaction] = useState(false);
     const [showCharPicker, setShowCharPicker] = useState(false);
+    const [togetherFreq, setTogetherFreq] = useState<"dense" | "normal" | "sparse" | "quiet">("normal");
+    const [userProfile, setUserProfile] = useState<{ name: string; avatar: string }>({ name: "我", avatar: "" });
 
     useEffect(() => {
         const chars = loadCharacters();
@@ -92,6 +95,14 @@ export default function MusicPlayer() {
             } else {
                 setSelectedCharId(chars[0].id);
             }
+        }
+        const p = loadUserProfile();
+        if (p) {
+            setUserProfile({ name: p.name || "我", avatar: p.avatar || "" });
+        }
+        const savedFreq = kvGet("music_together_freq");
+        if (savedFreq && ["dense", "normal", "sparse", "quiet"].includes(savedFreq)) {
+            setTogetherFreq(savedFreq as any);
         }
     }, []);
 
@@ -720,7 +731,7 @@ export default function MusicPlayer() {
                     <span>分享</span>
                 </button>
                 {characters.length > 0 && (
-                    <button className="mp-social-btn mp-companion-btn" onClick={triggerCompanionReaction} onContextMenu={(e) => { e.preventDefault(); setShowCharPicker(true); }} title="点击听TA感受，长按/右键换陪伴角色">
+                    <button className="mp-social-btn mp-companion-btn" onClick={() => { setViewMode("together"); triggerCompanionReaction(); }} onContextMenu={(e) => { e.preventDefault(); setShowCharPicker(true); }} title="点击进入伴听空间，长按/右键换陪伴角色">
                         {activeCompanion?.avatar ? (
                             <img src={activeCompanion.avatar} alt="" className="mp-companion-btn-avatar" />
                         ) : (
@@ -730,9 +741,11 @@ export default function MusicPlayer() {
                     </button>
                 )}
             </div>
+                </>
+            )}
 
-            {/* Companion Thought Bubble */}
-            {companionBubble && (
+            {/* Companion Thought Bubble (仅在普通模式展示独立浮层) */}
+            {viewMode !== "together" && companionBubble && (
                 <div className="mp-companion-bubble-wrap" onClick={() => setCompanionBubble(null)}>
                     <div className="mp-companion-bubble">
                         {activeCompanion?.avatar && <img src={activeCompanion.avatar} alt="" className="mp-bubble-avatar" />}
