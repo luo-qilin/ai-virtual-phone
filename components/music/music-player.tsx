@@ -15,10 +15,9 @@ import {
     type NeteasePlaylist,
 } from "@/lib/music-service";
 import { loadCharacters } from "@/lib/character-storage";
-import { loadApiConfigs, loadBindingConfig, resolveBinding } from "@/lib/settings-storage";
+import { loadApiConfigs, loadBindingConfig, resolveBinding, loadSettings } from "@/lib/settings-storage";
 import { buildProviderRequest, parseProviderResponse } from "@/lib/llm-provider-adapter";
 import { fetchLlmPayload } from "@/lib/llm-http";
-import { loadUserProfile } from "@/lib/user-profile-storage";
 import type { Character } from "@/lib/character-types";
 import MusicCommentsPage from "./music-comments";
 import MusicArtistPage from "./music-artist";
@@ -96,10 +95,12 @@ export default function MusicPlayer() {
                 setSelectedCharId(chars[0].id);
             }
         }
-        const p = loadUserProfile();
-        if (p) {
-            setUserProfile({ name: p.name || "我", avatar: p.avatar || "" });
-        }
+        try {
+            const s = loadSettings();
+            if (s?.user) {
+                setUserProfile({ name: s.user.name || "我", avatar: s.user.avatar || "" });
+            }
+        } catch { /* ignore */ }
         const savedFreq = kvGet("music_together_freq");
         if (savedFreq && ["dense", "normal", "sparse", "quiet"].includes(savedFreq)) {
             setTogetherFreq(savedFreq as any);
