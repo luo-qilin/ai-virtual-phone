@@ -14,6 +14,11 @@ import {
     getSongCommentPage, getNeteaseSongDetail,
     type NeteasePlaylist,
 } from "@/lib/music-service";
+import { loadCharacters } from "@/lib/character-storage";
+import { loadApiConfigs, loadBindingConfig, resolveBinding } from "@/lib/settings-storage";
+import { buildProviderRequest, parseProviderResponse } from "@/lib/llm-provider-adapter";
+import { fetchLlmPayload } from "@/lib/llm-http";
+import type { Character } from "@/lib/character-types";
 import MusicCommentsPage from "./music-comments";
 import MusicArtistPage from "./music-artist";
 import { loadMusicBg, playerBgStyle, MUSIC_BG_EVENT, type MusicBgConfig } from "@/lib/music-bg";
@@ -71,6 +76,82 @@ export default function MusicPlayer() {
     const [palette, setPalette] = useState<CoverPalette>(DEFAULT_COVER_PALETTE);
     const [bgCfg, setBgCfg] = useState<MusicBgConfig>(() => loadMusicBg());
     const [commentTotal, setCommentTotal] = useState(0);
+    const [characters, setCharacters] = useState<Character[]>([]);
+    const [selectedCharId, setSelectedCharId] = useState<string>("");
+    const [companionBubble, setCompanionBubble] = useState<string | null>(null);
+    const [isGeneratingReaction, setIsGeneratingReaction] = useState(false);
+    const [showCharPicker, setShowCharPicker] = useState(false);
+
+    useEffect(() => {
+        const chars = loadCharacters();
+        setCharacters(chars);
+        if (chars.length > 0) {
+            const savedCharId = kvGet("music_companion_char_id");
+            if (savedCharId && chars.some(c => c.id === savedCharId)) {
+                setSelectedCharId(savedCharId);
+            } else {
+                setSelectedCharId(chars[0].id);
+            }
+        }
+    }, []);
+
+    const activeCompanion = useMemo(() => {
+        return characters.find(c => c.id === selectedCharId) || null;
+    }, [characters, selectedCharId]);
+
+    const handleSelectCompanion = useCallback((id: string) => {
+        setSelectedCharId(id);
+        kvSet("music_companion_char_id", id);
+        setShowCharPicker(false);
+        const char = characters.find(c => c.id === id);
+        if (char) {
+            setCompanionBubble(`现在和${char.name}一起听歌啦~`);
+            setTimeout(() => setCompanionBubble(null), 4000);
+        }
+    }, [characters]);
+
+    const triggerCompanionReaction = useCallback(async () => {
+        if (!activeCompanion || !player.currentTrack || isGeneratingReaction) return;
+        setIsGeneratingReaction(true);
+        setCompanionBubble("正在聆听中...");
+
+        try {
+            const bindings = loadBindingConfig();
+            const slot = resolveBinding(bindings, activeCompanion.id, "chat");
+            const configs = loadApiConfigs();
+            const apiConfig = configs.find(c => c.id === slot.apiConfigId) || configs[0];
+            if (!apiConfig) {
+                setCompanionBubble("请先在设置中配置 API");
+                setTimeout(() => setCompanionBubble(null), 3000);
+                setIsGeneratingReaction(false);
+                return;
+            }
+
+            const prompt = `你正在和用户一起听这首歌：\n歌名：《${player.currentTrack.title}》\n歌手：${player.currentTrack.artist}\n\n你的人物设定是：${activeCompanion.name}，性格特点：${activeCompanion.personality || "温柔善良"}。\n请你以第一人称对这首歌说出一句自然的感想或回忆，字数30字以内，不要带任何前缀或标签，直接输出你的心声。`;
+            const req = buildProviderRequest(apiConfig, null, [
+                { role: "system", content: "你是一个陪伴用户听歌的AI伙伴。" },
+                { role: "user", content: prompt }
+            ]);
+            const res = await fetchLlmPayload(req);
+            if (res.ok) {
+                const data = await res.json();
+                const parsed = parseProviderResponse(req.providerKind, data);
+                const content = parsed.content.trim();
+                if (content) {
+                    setCompanionBubble(content);
+                    setTimeout(() => setCompanionBubble(null), 8000);
+                }
+            } else {
+                setCompanionBubble("这首歌的旋律好美...");
+                setTimeout(() => setCompanionBubble(null), 4000);
+            }
+        } catch {
+            setCompanionBubble("静静沉浸在音乐中...");
+            setTimeout(() => setCompanionBubble(null), 4000);
+        } finally {
+            setIsGeneratingReaction(false);
+        }
+    }, [activeCompanion, player.currentTrack, isGeneratingReaction]);
 
     useEffect(() => {
         const handleBgChange = () => setBgCfg(loadMusicBg());
@@ -649,7 +730,63 @@ export default function MusicPlayer() {
                     </svg>
                     <span>分享</span>
                 </button>
+                {characters.length > 0 && (
+                    <button className="mp-social-btn mp-companion-btn" onClick={triggerCompanionReaction} onContextMenu={(e) => { e.preventDefault(); setShowCharPicker(true); }} title="点击听TA感受，长按/右键换陪伴角色">
+                        {activeCompanion?.avatar ? (
+                            <img src={activeCompanion.avatar} alt="" className="mp-companion-btn-avatar" />
+                        ) : (
+                            <span className="mp-companion-btn-emoji">✨</span>
+                        )}
+                        <span>{activeCompanion ? activeCompanion.name.slice(0, 3) : "伴听"}</span>
+                    </button>
+                )}
             </div>
+
+            {/* Companion Thought Bubble */}
+            {companionBubble && (
+                <div className="mp-companion-bubble-wrap" onClick={() => setCompanionBubble(null)}>
+                    <div className="mp-companion-bubble">
+                        {activeCompanion?.avatar && <img src={activeCompanion.avatar} alt="" className="mp-bubble-avatar" />}
+                        <div className="mp-bubble-text">{companionBubble}</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Companion Character Picker Drawer */}
+            {showCharPicker && (
+                <div className="music-queue-overlay" onClick={() => setShowCharPicker(false)}>
+                    <div className="music-queue-drawer" onClick={e => e.stopPropagation()}>
+                        <div className="music-queue-header">
+                            <span>选择一起听歌的角色</span>
+                            <button className="music-playlist-picker-close" onClick={() => setShowCharPicker(false)}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                            </button>
+                        </div>
+                        <div className="music-queue-list">
+                            {characters.map((c) => (
+                                <div
+                                    key={c.id}
+                                    className="music-queue-item"
+                                    role="button"
+                                    tabIndex={0}
+                                    {...(c.id === selectedCharId ? { "data-current": "" } : {})}
+                                    onClick={() => handleSelectCompanion(c.id)}
+                                >
+                                    {c.avatar ? (
+                                        <img src={c.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', marginRight: 10 }} />
+                                    ) : (
+                                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--c-music-surface-solid)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>👤</div>
+                                    )}
+                                    <div className="music-queue-item-info">
+                                        <div className="music-queue-item-title">{c.name}</div>
+                                        <div className="music-queue-item-artist">{c.intro || c.personality || "伴听角色"}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Queue drawer */}
             {showQueue && (
