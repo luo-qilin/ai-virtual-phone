@@ -1828,6 +1828,16 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     };
   }, []);
 
+    useEffect(() => {
+    (window as any).openShareViaChat = (shareData: any) => {
+      window.dispatchEvent(
+        new CustomEvent("music-player-open-together", { detail: shareData })
+      );
+    };
+    return () => {
+      delete (window as any).openShareViaChat;
+    };
+  }, []);
   // WeChat iLink Bot bridge (polls messages for all enabled bots)
   useWeixinBridge();
 
