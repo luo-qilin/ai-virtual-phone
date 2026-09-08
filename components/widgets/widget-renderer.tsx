@@ -155,10 +155,103 @@ function WidgetContent({
       return <FreestyleFrame90Widget config={config} widgetId={widgetId} onConfigChange={onConfigChange} preview={preview} />;
     case "profileCard":
       return <ProfileCardWidget config={config} widgetId={widgetId} onConfigChange={onConfigChange} preview={preview} />;
+    case "weather":
+      return <WeatherWidget />;
     default:
       return null;
   }
 }
+
+/* ══════════════════════════════════════════
+   Weather — 晴空天气小组件 (2x2)
+   ══════════════════════════════════════════ */
+function WeatherWidget() {
+  const [data, setData] = useState<any>(null);
+  const [city, setCity] = useState("定位中...");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchWeather() {
+      try {
+        // 1. 尝试从 APP 私有数据库读取上次保存的城市
+        const STORAGE_KEY = "lumen_weather_last_city_v1";
+        // 注意：小组件在宿主环境运行，无法直接用 AiPhone.db 读 APP 私有数据，
+        // 但我们可以直接访问 kvGet (IndexedDB) 里的数据，或者使用默认坐标。
+        // 这里为了组件独立性，优先执行一次极速 IP 定位。
+        const ipUrl = "https://whois.pconline.com.cn/ipJson.jsp?json=true";
+        const ipRes = await fetch(ipUrl);
+        const ipData = ipRes.ok ? await ipRes.json() : null;
+        const cityName = ipData?.region || ipData?.city || "北京市";
+        if (cancelled) return;
+        setCity(cityName);
+
+        // 2. 获取经纬度 (北京默认)
+        let lat = 39.90, lng = 116.40;
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=zh`;
+        const geoRes = await fetch(geoUrl);
+        const geoData = geoRes.ok ? await geoRes.json() : null;
+        if (geoData?.results?.[0]) {
+          lat = geoData.results[0].latitude;
+          lng = geoData.results[0].longitude;
+        }
+
+        // 3. 获取天气
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+        const wRes = await fetch(weatherUrl);
+        const wData = wRes.ok ? await wRes.json() : null;
+        if (!cancelled) setData(wData);
+      } catch (e) {
+        console.error("Weather widget fetch failed", e);
+      }
+    }
+    fetchWeather();
+    const timer = setInterval(fetchWeather, 30 * 60 * 1000); // 30分钟刷一次
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
+
+  if (!data) return (
+    <div className="wg-weather-loading">
+      <div className="wg-weather-spinner" />
+    </div>
+  );
+
+  const currentTemp = Math.round(data.current.temperature_2m);
+  const high = Math.round(data.daily.temperature_2m_max[0]);
+  const low = Math.round(data.daily.temperature_2m_min[0]);
+  const code = data.current.weather_code;
+
+  // 简易 WMO 映射
+  const getWmo = (c: number) => {
+    if (c === 0 || c === 1) return { n: "晴朗", i: "☀️" };
+    if (c === 2 || c === 3) return { n: "多云", i: "☁️" };
+    if (c >= 51 && c <= 67) return { n: "雨天", i: "🌧️" };
+    if (c >= 71 && c <= 77) return { n: "雪天", i: "🌨️" };
+    if (c >= 80 && c <= 82) return { n: "阵雨", i: "🌦️" };
+    if (c >= 95) return { n: "雷雨", i: "⛈️" };
+    return { n: "阴天", i: "☁️" };
+  };
+  const wmo = getWmo(code);
+
+  return (
+    <div className="wg-weather">
+      <div className="wg-weather-top">
+        <span className="wg-weather-city">{city}</span>
+        <span className="wg-weather-icon">{wmo.i}</span>
+      </div>
+      <div className="wg-weather-main">
+        <span className="wg-weather-temp">{currentTemp}°</span>
+        <span className="wg-weather-desc">{wmo.n}</span>
+      </div>
+      <div className="wg-weather-bottom">
+        <span className="wg-weather-hl">H:{high}° L:{low}°</span>
+        <div className="wg-weather-bar">
+          <div className="wg-weather-dot" style={{ left: `${((currentTemp - low) / (high - low || 1)) * 100}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ----------------------------------------------------
 //   Camera Frame Widget (Freestyle)
