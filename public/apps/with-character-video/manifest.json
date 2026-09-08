@@ -1,0 +1,25 @@
+{
+  "sdkVersion": "1.0",
+  "id": "with.character.video",
+  "name": "影伴：同屏观影",
+  "version": "1.0.0",
+  "author": "小坊",
+  "description": "和你的 AI 角色一起看视频！支持本地视频、B站视频、网络直链，以及强大的“屏幕分享”投屏功能（可完美同享百度网盘、夸克等网页视频）。支持 AI 视频截图视觉识别、自动语音弹幕吐槽与实时互动。",
+  "icon": "assets/icon.png",
+  "entry": "index.html",
+  "permissions": [
+    "app.data.read",
+    "app.data.write",
+    "characters.read",
+    "ai.generate",
+    "ai.generateImage",
+    "voice.readProfiles",
+    "voice.tts",
+    "voice.play",
+    "ui.toast",
+    "media.pick"
+  ],
+  "resources": {
+    "presets": ["presets.json"]
+  }
+}

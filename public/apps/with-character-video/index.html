@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>影伴：同屏观影</title>
+  <style>
+    :root {
+      --primary-color: #ff3b30;
+      --primary-glow: rgba(255, 59, 48, 0.3);
+      --bg-dark: #0a0a0c;
+      --bg-card: #16161a;
+      --border-color: #2c2c35;
+      --text-main: #f5f5f7;
+      --text-muted: #8e8e93;
+      --safe-top: var(--ai-phone-app-bar-top, 56px);
+      --safe-bottom: var(--ai-phone-app-safe-bottom, 24px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶栏 */
+    .topbar {
+      position: fixed;
+      top: var(--safe-top);
+      left: 16px;
+      right: var(--ai-phone-app-bar-clear-right, 96px);
+      height: var(--ai-phone-app-bar-height, 32px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+
+    .app-title {
+      font-size: 16px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #ff3b30, #ff9500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-title::before {
+      content: "🎬";
+      filter: drop-shadow(0 0 4px var(--primary-color));
+    }
+
+    .app-status {
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .app-status.active {
+      color: #34c759;
+      border-color: rgba(52, 199, 89, 0.3);
+    }
+
+    .app-status.active::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      background: #34c759;
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    /* 主容器 */
+    .app-container {
+      flex: 1;
+      padding-top: calc(var(--safe-top) + var(--ai-phone-app-bar-height, 32px) + 12px);
+      padding-bottom: calc(var(--safe-bottom) + 80px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    /* 视频/投屏观影区 */
+    .video-viewport {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .video-viewport video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .video-viewport iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* 虚空/未播放引导 */
+    .player-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      background: linear-gradient(135deg, #141416, #0d0d0f);
+      z-index: 10;
+    }
+
+    .placeholder-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .placeholder-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .placeholder-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 240px;
+    }
+
+    /* 弹幕图层 */
+    .danmaku-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      overflow: hidden;
+    }
+
+    .danmaku-item {
+      position: absolute;
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.5);
+      animation: danmaku-move linear forwards;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .danmaku-avatar {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    @keyframes danmaku-move {
+      from { transform: translateX(320px); }
+      to { transform: translateX(-100%); }
+    }
+
+    /* 视频控制面板 */
+    .media-controls {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+
+    .media-controls::-webkit-scrollbar {
+      display: none;
+    }
+
+    .control-tab {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .control-tab.active {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    /* 影院控制面板区域 */
+    .panel-card {
+      background-color: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 控制面板内容 */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .app-input {
+      flex: 1;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-main);
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .app-input:focus {
+      border-color: var(--primary-color);
+    }
+
+    .btn-action {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-action:active {
+      opacity: 0.8;
+    }
+
+    .btn-secondary {
+      background-color: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+    }
+
+    /* 陪伴设置 */
+    .companion-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: rgba(255, 255, 255, 0.03);
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .companion-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--primary-color);
+    }
+
+    .companion-info {
+      flex: 1;
+    }
+
+    .companion-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .companion-status {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 观影互动与截图面板 */
+    .interaction-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .screenshot-area {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px dashed var(--border-color);
+    }
+
+    .screenshot-thumb-container {
+      width: 80px;
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    .screenshot-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .screenshot-placeholder {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 4px;
+    }
+
+    .screenshot-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .screenshot-title {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .screenshot-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* 观影设定与自动吐槽 */
+    .interaction-settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .setting-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .setting-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .setting-select {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .setting-select option {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    /* 吐槽台词展示 */
+    .quote-box {
+      background: rgba(255, 59, 48, 0.05);
+      border-left: 3px solid var(--primary-color);
+      padding: 10px 12px;
+      border-radius: 0 10px 10px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      color: #ff9500;
+    }
+
+    /* 底部固定聊天输入框 */
+    .input-dock {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background-color: rgba(22, 22, 26, 0.95);
+      border-top: 1px solid var(--border-color);
+      padding: 10px 16px calc(var(--safe-bottom) + 8px);
+      z-index: 90;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      max-width: 600px;
+      margin: 0 auto;
+      backdrop-filter: blur(10px);
+    }
+
+    /* 自定义文件上传隐藏按钮 */
+    #file-input {
+      display: none;
+    }
+
+    /* 隐藏的截图 Canvas */
+    #capture-canvas {
+      display: none;
+    }
+
+    /* 说明提示 */
+    .help-notes {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="app-title">影伴</div>
+    <div class="app-status" id="status-indicator">未投屏</div>
+  </div>
+
+  <!-- 主容器 -->
+  <div class="app-container">
+
+    <!-- 视频观影区 -->
+    <div class="video-viewport" id="video-viewport">
+      <!-- 弹幕容器 -->
+      <div class="danmaku-container" id="danmaku-container"></div>
+      
+      <!-- 播放器占位引导 -->
+      <div class="player-placeholder" id="video-placeholder">
+        <div class="placeholder-icon">🍿</div>
+        <div class="placeholder-title">开启同屏观影旅程</div>
+        <div class="placeholder-desc">使用下方“投屏观影”可完美分享百度网盘、夸克或B站画面，也可以直接播放本地与直链视频。</div>
+      </div>
+
+      <!-- 视频元素 -->
+      <video id="main-player" playsinline controls style="display: none;"></video>
+      
+      <!-- B站外链 iframe 容器 -->
+      <iframe id="bilibili-player" style="display: none;" allowfullscreen></iframe>
+    </div>
+
+    <!-- 播放源切换 tabs -->
+    <div class="media-controls">
+      <button class="control-tab active" onclick="switchTab('screen-share')">📺 投屏观影</button>
+      <button class="control-tab" onclick="switchTab('local-file')">📂 本地视频</button>
+      <button class="control-tab" onclick="switchTab('bilibili')">⚡ B站/直链</button>
+      <button class="control-tab" onclick="switchTab('settings')">⚙️ 观影设置</button>
+    </div>
+
+    <!-- 各 tab 的操作面板 -->
+    <div class="panel-card">
+      
+      <!-- Tab 1: 投屏观影 (屏幕分享) -->
+      <div id="tab-screen-share" class="tab-content active">
+        <div class="panel-title">屏幕/窗口投屏 (完美支持网盘与夸克)</div>
+        <p class="placeholder-desc" style="max-width: none; font-size: 11px;">
+          通过浏览器的屏幕共享功能，将<b>百度网盘、夸克浏览器、B站客户端</b>等任意放视频的窗口共享进来。AI 伙伴将可以通过视觉通道实时看到你投屏的内容并和你聊天。
+        </p>
+        <div class="input-row">
+          <button class="btn-action" style="flex: 1;" onclick="startScreenShare()">
+            🎥 开始捕获投屏窗口
+          </button>
+          <button class="btn-action btn-secondary" onclick="stopVideo()">
+            🛑 停止
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab 2: 本地视频 -->
+      <div id="tab-local-file" class="tab-content">
+        <div class="panel-title">播放手机或电脑本地视频</div>
+        <div class="input-row">
+          <button class="btn-action btn-secondary" style="flex: 1;" onclick="triggerFileInput()">
+            📂 选择本地视频文件
+          </button>
+          <button class="btn-action" onclick="playLocalVideo()">
+            ▶️ 播放
+          </button>
+        </div>
+        <div id="file-name" style="font-size: 11px; color: var(--text-muted); text-align: center;">未选择文件</div>
+      </div>
+
+      <!-- Tab 3: B站/直链 -->
+      <div id="tab-bilibili" class="tab-content">
+        <div class="panel-title">输入视频直链 (.mp4) 或 B站 BV 号</div>
+        <div class="input-row">
+          <input type="text" id="video-url-input" class="app-input" placeholder="支持 MP4 直链，或输入 B站 BV1xx...">
+          <button class="btn-action" onclick="playUrlOrBilibili()">
+            🚀 载入
+          </button>
+        </div>
+        <div class="help-notes" style="margin-top: 8px; background: rgba(255,255,255,0.02); padding: 8px; border-radius: 8px;">
+          <div style="color: #ff9500; font-weight: 600;">🔒 为什么不建议在内部 iframe 登录？</div>
+          <div style="color: var(--text-muted);">现代浏览器会拦截嵌入式播放器的登录 Cookie。看 VIP 视频<b>最完美的解决办法</b>是：在浏览器新标签页打开 B站/网盘并登录 VIP 播放，然后使用本软件的<b>「📺 投屏观影」</b>共享此页面，画质极高且 AI 还能通过视觉通道看见画面！</div>
+          <a href="https://www.bilibili.com" target="_blank" class="btn-action btn-secondary" style="margin-top: 6px; text-decoration: none; font-size: 11px; min-height: auto; padding: 6px 12px; display: inline-flex;">
+            🌐 弹出并登录 Bilibili 网页版
+          </a>
+        </div>
+      </div>
+
+      <!-- Tab 4: 观影设置 -->
+      <div id="tab-settings" class="tab-content">
+        <div class="panel-title">观影互动设定</div>
+        <div class="interaction-settings">
+          <div class="setting-item">
+            <span class="setting-label">自动吐槽频率</span>
+            <select id="auto-吐槽-rate" class="setting-select" onchange="toggleAuto吐槽()">
+              <option value="0">手动吐槽</option>
+              <option value="15000">每15秒吐槽 (高频)</option>
+              <option value="30000">每30秒吐槽</option>
+              <option value="60000">每1分钟吐槽</option>
+              <option value="120000">每2分钟吐槽</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <span class="setting-label">吐槽语音陪伴</span>
+            <select id="voice-enable" class="setting-select">
+              <option value="yes">自动语音朗读弹幕</option>
+              <option value="no">静音 (仅文字弹幕)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 陪伴角色卡 -->
+    <div class="companion-selector">
+      <img id="char-avatar" class="companion-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%23ff3b30'><circle cx='50' cy='50' r='50'/></svg>">
+      <div class="companion-info">
+        <div id="char-name" class="companion-name">加载中...</div>
+        <div class="companion-status">已就座，准备和你一起观影 🍿</div>
+      </div>
+      <button class="btn-action btn-secondary" style="padding: 6px 12px; font-size: 11px; min-height: auto;" onclick="refreshCharacter()">
+        🔄 切换角色
+      </button>
+    </div>
+
+    <!-- 实时截图与吐槽区域 -->
+    <div class="panel-card interaction-panel">
+      <div class="panel-title">
+        <span>当前观影互动</span>
+        <button class="btn-action" style="padding: 4px 10px; font-size: 11px; min-height: auto;" onclick="captureAnd吐槽()">
+          📸 截图给TA看并吐槽
+        </button>
+      </div>
+
+      <!-- 截图区域 -->
+      <div class="screenshot-area">
+        <div class="screenshot-thumb-container">
+          <div id="thumb-placeholder" class="screenshot-placeholder">暂无观影截图</div>
+          <img id="capture-thumb" class="screenshot-thumb" style="display: none;">
+        </div>
+        <div class="screenshot-info">
+          <div class="screenshot-title">实时观影画面捕获</div>
+          <div class="screenshot-desc">点击“截图吐槽”可自动抓取当前投屏/视频帧，供 AI 伙伴进行视觉分析。</div>
+        </div>
+      </div>
+
+      <!-- 吐槽展示框 -->
+      <div class="quote-box" id="quote-box">
+        （等待你发送截图吐槽，或者开启“自动吐槽”...）
+      </div>
+    </div>
+
+    <!-- 说明指引 -->
+    <div class="help-notes">
+      <div>💡 <b>如何流畅观看百度网盘/夸克？</b></div>
+      <div style="color: var(--text-muted);">在后台打开网盘/夸克的网页或客户端，点击“开始捕获投屏窗口”，在浏览器弹出的分享窗口中，选择对应的网盘网页或播放器窗口即可！</div>
+      <div style="color: var(--text-muted);">配合“自动吐槽”功能，AI 能够定时看到你的画面，即使你在看电影，它也能自动在你的视频上发语音弹幕。</div>
+    </div>
+
+  </div>
+
+  <!-- 底部固定聊天输入框 -->
+  <div class="input-dock">
+    <input type="text" id="user-comment" class="app-input" placeholder="输入要和角色聊天的吐槽内容...">
+    <button class="btn-action" onclick="submitInteraction()">发送</button>
+  </div>
+
+  <!-- 隐藏的文件上传元素 -->
+  <input type="file" id="file-input" accept="video/*" onchange="handleFileSelected()">
+  
+  <!-- 隐藏的 Canvas，用于截图 -->
+  <canvas id="capture-canvas"></canvas>
+
+  <script>
+    // 全局 SDK 别名引用
+    const AiPhone = window.AiPhone || window.AiPhoneApp;
+
+    let selectedCharacterId = null;
+    let charactersList = [];
+    let activeStream = null;
+    let currentMode = 'screen-share'; // screen-share, local-file, bilibili
+    let auto吐槽Interval = null;
+    let isGenerating = false;
+
+    // 页面初始化
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (AiPhone) {
+        try {
+          await initCompanion();
+        } catch (e) {
+          console.error(e);
+          showToast("初始化角色失败，请检查小手机连接");
+        }
+      } else {
+        document.getElementById('char-name').innerText = "未连接宿主";
+      }
+    });
+
+    // 初始化/获取角色
+    async function initCompanion() {
+      try {
+        const launchContext = await AiPhone.app.getLaunchContext();
+        charactersList = await AiPhone.characters.list();
+        
+        if (charactersList.length === 0) {
+          document.getElementById('char-name').innerText = "无可用角色";
+          return;
+        }
+
+        // 默认挑选当前会话角色或第一个角色
+        selectedCharacterId = launchContext?.characterId || charactersList[0]?.id;
+        await updateCharacterUI();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 刷新/切换角色
+    async function refreshCharacter() {
+      if (charactersList.length <= 1) {
+        showToast("没有其他角色可供切换");
+        return;
+      }
+      const currentIndex = charactersList.findIndex(c => c.id === selectedCharacterId);
+      const nextIndex = (currentIndex + 1) % charactersList.length;
+      selectedCharacterId = charactersList[nextIndex].id;
+      await updateCharacterUI();
+      showToast(`已切换陪伴角色为：${charactersList[nextIndex].name}`);
+    }
+
+    // 更新角色 UI 信息
+    async function updateCharacterUI() {
+      try {
+        const character = await AiPhone.characters.get(selectedCharacterId);
+        document.getElementById('char-name').innerText = character.name;
+        if (character.avatar) {
+          document.getElementById('char-avatar').src = character.avatar;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Tab 切换逻辑
+    function switchTab(tabId) {
+      document.querySelectorAll('.control-tab').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
+
+      // 激活对应按钮和面板
+      const targetBtn = Array.from(document.querySelectorAll('.control-tab')).find(btn => btn.innerText.includes(
+        tabId === 'screen-share' ? '投屏' : tabId === 'local-file' ? '本地' : tabId === 'bilibili' ? '直链' : '设置'
+      ));
+      if (targetBtn) targetBtn.classList.add('active');
+
+      const targetPanel = document.getElementById(`tab-${tabId}`);
+      if (targetPanel) targetPanel.classList.add('active');
+
+      currentMode = tabId;
+    }
+
+    // 屏幕分享投屏逻辑 (核心亮点-支持网盘与夸克)
+    async function startScreenShare() {
+      try {
+        if (activeStream) {
+          stopVideo();
+        }
+
+        // 请求屏幕分享媒体流
+        activeStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            cursor: "always"
+          },
+          audio: false // 屏幕音频不强制捕获，依系统支持
+        });
+
+        const videoEl = document.getElementById('main-player');
+        const placeholder = document.getElementById('video-placeholder');
+        const iframeEl = document.getElementById('bilibili-player');
+
+        iframeEl.style.display = 'none';
+        placeholder.style.display = 'none';
+        videoEl.style.display = 'block';
+
+        videoEl.srcObject = activeStream;
+        videoEl.muted = true; // 投屏观影静音播放器，避免啸叫
+        videoEl.play();
+
+        document.getElementById('status-indicator').innerText = "投屏中";
+        document.getElementById('status-indicator').classList.add('active');
+        showToast("投屏开启成功！请在后台播放视频");
+      } catch (e) {
+        console.error(e);
+        showToast("无法获取屏幕分享权限: " + e.message);
+      }
+    }
+
+    // 本地文件上传与播放
+    function triggerFileInput() {
+      document.getElementById('file-input').click();
+    }
+
+    // 处理文件选择
+    function handleFileSelected() {
+      const fileInput = document.getElementById('file-input');
+      if (fileInput.files.length > 0) {
+        document.getElementById('file-name').innerText = `已选：${fileInput.files[0].name}`;
+      }
+    }
+
+    // 播放本地视频
+    function playLocalVideo() {
+      const fileInput = document.getElementById('file-input');
+      if (fileInput.files.length === 0) {
+        showToast("请先选择一个本地视频文件");
+        return;
+      }
+
+      stopVideo();
+
+      const file = fileInput.files[0];
+      const url = URL.createObjectURL(file);
+
+      const videoEl = document.getElementById('main-player');
+      const placeholder = document.getElementById('video-placeholder');
+      const iframeEl = document.getElementById('bilibili-player');
+
+      iframeEl.style.display = 'none';
+      placeholder.style.display = 'none';
+      videoEl.style.display = 'block';
+
+      videoEl.srcObject = null;
+      videoEl.src = url;
+      videoEl.play();
+
+      document.getElementById('status-indicator').innerText = "本地播放";
+      document.getElementById('status-indicator').classList.add('active');
+      showToast("开始播放本地视频");
+    }
+
+    // 播放直链或 B 站视频
+    function playUrlOrBilibili() {
+      const inputVal = document.getElementById('video-url-input').value.trim();
+      if (!inputVal) {
+        showToast("请输入直链或 B站 BV号");
+        return;
+      }
+
+      stopVideo();
+
+      const videoEl = document.getElementById('main-player');
+      const placeholder = document.getElementById('video-placeholder');
+      const iframeEl = document.getElementById('bilibili-player');
+
+      // 强大的正则：从用户输入的任何文本（包括复制的分享文案、链接、纯BV号）中提取出 BV 号
+      const bvRegex = /(BV[a-zA-Z0-9]{10})/i;
+      const match = inputVal.match(bvRegex);
+
+      if (match) {
+        const bv = match[1];
+        
+        // 渲染 B站 iframe
+        videoEl.style.display = 'none';
+        placeholder.style.display = 'none';
+        iframeEl.style.display = 'block';
+        
+        // 优化 iframe 属性以防止 B站 跨域或 Referrer 拦截
+        iframeEl.setAttribute('referrerpolicy', 'no-referrer');
+        iframeEl.setAttribute('sandbox', 'allow-top-navigation allow-same-origin allow-forms allow-scripts allow-popups');
+        iframeEl.setAttribute('allowfullscreen', 'true');
+        iframeEl.setAttribute('frameborder', 'no');
+        
+        // 拼接官方高清、宽屏且无广告的嵌入式链接
+        iframeEl.src = `https://player.bilibili.com/player.html?bvid=${bv}&page=1&high_quality=1&as_wide=1&autoplay=0`;
+        
+        document.getElementById('status-indicator').innerText = "B站观影";
+        document.getElementById('status-indicator').classList.add('active');
+        showToast(`已成功识别并载入 B站 视频 [${bv}]`);
+      } else {
+        // 当做 MP4 直链处理
+        iframeEl.style.display = 'none';
+        placeholder.style.display = 'none';
+        videoEl.style.display = 'block';
+        videoEl.srcObject = null;
+        videoEl.src = inputVal;
+        videoEl.play();
+
+        document.getElementById('status-indicator').innerText = "直链播放";
+        document.getElementById('status-indicator').classList.add('active');
+        showToast("已载入视频直链");
+      }
+    }
+
+    // 停止视频/投屏播放
+    function stopVideo() {
+      const videoEl = document.getElementById('main-player');
+      const placeholder = document.getElementById('video-placeholder');
+      const iframeEl = document.getElementById('bilibili-player');
+
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
+      }
+
+      videoEl.pause();
+      videoEl.src = '';
+      videoEl.srcObject = null;
+      videoEl.style.display = 'none';
+
+      iframeEl.src = '';
+      iframeEl.style.display = 'none';
+
+      placeholder.style.display = 'flex';
+
+      document.getElementById('status-indicator').innerText = "未投屏";
+      document.getElementById('status-indicator').classList.remove('active');
+    }
+
+    // 定时/自动吐槽开关
+    function toggleAuto吐槽() {
+      const rate = parseInt(document.getElementById('auto-吐槽-rate').value);
+      if (auto吐槽Interval) {
+        clearInterval(auto吐槽Interval);
+        auto吐槽Interval = null;
+      }
+
+      if (rate > 0) {
+        auto吐槽Interval = setInterval(() => {
+          if (!isGenerating) {
+            captureAnd吐槽();
+          }
+        }, rate);
+        showToast("已开启自动观影吐槽模式");
+      } else {
+        showToast("已关闭自动吐槽，改为手动触发");
+      }
+    }
+
+    // 核心骨架：截图视频流，并调用 AI 锐评
+    async function captureAnd吐槽(userText = "") {
+      const videoEl = document.getElementById('main-player');
+      const canvas = document.getElementById('capture-canvas');
+      const thumb = document.getElementById('capture-thumb');
+      const thumbPlaceholder = document.getElementById('thumb-placeholder');
+
+      // 1. 判断当前是否在投屏/本地播放中
+      if (videoEl.style.display === 'none' || (!videoEl.src && !videoEl.srcObject)) {
+        // 如果是 B站 iframe 模式，由于 CORS 无法直接截图，直接发送纯文字请求
+        if (document.getElementById('bilibili-player').style.display === 'block') {
+          await generateReplyNoImage(userText);
+        } else {
+          showToast("请先在上方播放视频或共享屏幕");
+        }
+        return;
+      }
+
+      try {
+        isGenerating = true;
+        // 2. 绘制视频帧到 Canvas
+        canvas.width = videoEl.videoWidth || 640;
+        canvas.height = videoEl.videoHeight || 360;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+        // 3. 拿到 dataURL 缩略图
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // 压缩率 0.7 避免过大
+        thumb.src = dataUrl;
+        thumb.style.display = 'block';
+        thumbPlaceholder.style.display = 'none';
+
+        // 4. 调用小手机 AI 接口 (带截图和预设)
+        await generateReplyWithImage(dataUrl, userText);
+      } catch (e) {
+        console.error(e);
+        showToast("截图捕获失败: " + e.message);
+      } finally {
+        isGenerating = false;
+      }
+    }
+
+    // 图像通道 AI 生成
+    async function generateReplyWithImage(imageDataUrl, userText) {
+      if (!selectedCharacterId) {
+        showToast("请先选择一个陪伴角色");
+        return;
+      }
+
+      document.getElementById('quote-box').innerText = "角色正在思考并组织吐槽语言...";
+
+      try {
+        const character = await AiPhone.characters.get(selectedCharacterId);
+        const name = character.name;
+
+        // 组装 instruction
+        let instruction = `用户正和你并排看视频。`;
+        if (userText) {
+          instruction += `\n用户对这一幕发表了吐槽/想法：“${userText}”\n`;
+        } else {
+          instruction += `\n用户没有说话，请你主动观察当前这张截图画面，发一条弹幕级别的吐槽（100字内，极具口语化）。\n`;
+        }
+
+        // 调用 generate 接口
+        const response = await AiPhone.ai.generate({
+          characterId: selectedCharacterId,
+          appTags: ["watch_video", "interaction"],
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: instruction },
+                { type: "image", image: imageDataUrl }
+              ]
+            }
+          ],
+          instruction: "请仔细查看图片，以角色的语气进行吐槽或评论。直接输出台词，不要带任何旁白或动作描写。"
+        });
+
+        const replyText = response.text || "（看得太入迷了，一时间不知道说什么）";
+        
+        // 更新页面展示
+        document.getElementById('quote-box').innerText = `【${name}】：${replyText}`;
+        
+        // 触发弹幕和 TTS
+        triggerDanmaku(replyText, character.avatar);
+        await triggerTTS(replyText);
+
+      } catch (e) {
+        console.error(e);
+        document.getElementById('quote-box').innerText = "AI 沟通遇到了点小状况，稍后再试吧~";
+      }
+    }
+
+    // 纯文字通道 (针对无法截图的 iframe 模式或降级模式)
+    async function generateReplyNoImage(userText) {
+      if (!selectedCharacterId) return;
+
+      document.getElementById('quote-box').innerText = "角色正在吐槽中...";
+
+      try {
+        const character = await AiPhone.characters.get(selectedCharacterId);
+        const name = character.name;
+
+        let instruction = `用户正在和你一起看视频（当前无法获取画面，通过纯文字互动）。`;
+        if (userText) {
+          instruction += `\n用户对你吐槽：“${userText}”\n请你作为观影伙伴进行回复（100字内，口语化、生动）。`;
+        } else {
+          instruction += `\n请你主动跟用户搭话，问问视频好看不好看，或者分享一下你喜欢的电影类型。`;
+        }
+
+        const response = await AiPhone.ai.generate({
+          characterId: selectedCharacterId,
+          appTags: ["watch_video", "interaction"],
+          instruction: instruction
+        });
+
+        const replyText = response.text || "（看得太入迷了...）";
+        document.getElementById('quote-box').innerText = `【${name}】：${replyText}`;
+
+        triggerDanmaku(replyText, character.avatar);
+        await triggerTTS(replyText);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('quote-box').innerText = "吐槽失败了...";
+      }
+    }
+
+    // 底部输入框提交吐槽
+    async function submitInteraction() {
+      const input = document.getElementById('user-comment');
+      const text = input.value.trim();
+      if (!text) {
+        showToast("请输入吐槽内容");
+        return;
+      }
+
+      input.value = "";
+      showToast("正在发送吐槽...");
+      await captureAnd吐槽(text);
+    }
+
+    // 渲染视频上的弹幕
+    function triggerDanmaku(text, avatarUrl) {
+      const container = document.getElementById('danmaku-container');
+      const danmaku = document.createElement('div');
+      danmaku.className = 'danmaku-item';
+      
+      // 头像
+      if (avatarUrl) {
+        const img = document.createElement('img');
+        img.className = 'danmaku-avatar';
+        img.src = avatarUrl;
+        danmaku.appendChild(img);
+      }
+
+      // 文字内容
+      const span = document.createElement('span');
+      span.innerText = text;
+      danmaku.appendChild(span);
+
+      // 随机分配高度轨道
+      const trackCount = 4;
+      const trackIndex = Math.floor(Math.random() * trackCount);
+      danmaku.style.top = `${10 + trackIndex * 22}%`;
+      
+      // 随机颜色
+      const colors = ['#ffffff', '#ffeb3b', '#4caf50', '#00bcd4', '#e91e63'];
+      danmaku.style.color = colors[Math.floor(Math.random() * colors.length)];
+
+      container.appendChild(danmaku);
+
+      // 动画结束后自动销毁
+      danmaku.addEventListener('animationend', () => {
+        danmaku.remove();
+      });
+    }
+
+    // 触发角色 TTS 语音吐槽
+    async function triggerTTS(text) {
+      const voiceEnable = document.getElementById('voice-enable').value;
+      if (voiceEnable !== 'yes') return;
+
+      try {
+        const speech = await AiPhone.voice.tts({
+          characterId: selectedCharacterId,
+          text: text
+        });
+        if (speech && speech.dataUrl) {
+          // 调用宿主代播，完美解决 iOS 静音和锁屏卡片问题
+          await AiPhone.voice.play({
+            dataUrl: speech.dataUrl
+          });
+        }
+      } catch (e) {
+        console.warn("TTS 播放出错，可能用户未配置或当前模型不支持:", e);
+      }
+    }
+
+    // 快捷 Toast 提示
+    function showToast(msg) {
+      if (AiPhone && AiPhone.ui && AiPhone.ui.toast) {
+        AiPhone.ui.toast(msg);
+      } else {
+        alert(msg);
+      }
+    }
+  </script>
+</body>
+</html>
