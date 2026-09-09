@@ -26,6 +26,10 @@ export type CharacterWorldGroup = {
     relations: CharacterWorldRelation[];
     createdAt: string;
     updatedAt: string;
+    canvasX?: number;
+    canvasY?: number;
+    canvasRot?: number;
+    canvasZIndex?: number;
 };
 
 function isBrowser(): boolean {
@@ -84,6 +88,8 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
             }
 
             const memberSet = new Set(members);
+            // 这里放宽校验：允许关系连接到该卷宗内的子卷宗 ID
+            const subGroupIds = new Set(groups.filter(g => g.parentId === group.id).map(g => g.id));
             const relations = (Array.isArray(group.relations) ? group.relations : [])
                 .filter(relation => (
                     relation
@@ -92,8 +98,8 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
                     && typeof relation.toCharacterId === "string"
                     && typeof relation.label === "string"
                     && relation.label.trim()
-                    && memberSet.has(relation.fromCharacterId)
-                    && memberSet.has(relation.toCharacterId)
+                    && (memberSet.has(relation.fromCharacterId) || subGroupIds.has(relation.fromCharacterId))
+                    && (memberSet.has(relation.toCharacterId) || subGroupIds.has(relation.toCharacterId))
                     && relation.fromCharacterId !== relation.toCharacterId
                 ))
                 .map(relation => ({
@@ -214,20 +220,32 @@ export function deleteCharacterWorldGroup(groupId: string): void {
 
 export function moveCharacterToWorld(characterId: string, groupId: string): void {
     const now = new Date().toISOString();
-    saveCharacterWorldGroups(loadCharacterWorldGroups().map(group => {
+    const allGroups = loadCharacterWorldGroups();
+    saveCharacterWorldGroups(allGroups.map(group => {
         const nextMemberIds = group.memberIds.filter(id => id !== characterId);
         const receivesMember = group.id === groupId;
         const memberIds = receivesMember ? [...nextMemberIds, characterId] : nextMemberIds;
         const memberSet = new Set(memberIds);
+        const subGroupIds = new Set(allGroups.filter(g => g.parentId === group.id).map(g => g.id));
         return {
             ...group,
             memberIds,
             relations: group.relations.filter(relation =>
-                memberSet.has(relation.fromCharacterId) && memberSet.has(relation.toCharacterId)
+                (memberSet.has(relation.fromCharacterId) || subGroupIds.has(relation.fromCharacterId)) && 
+                (memberSet.has(relation.toCharacterId) || subGroupIds.has(relation.toCharacterId))
             ),
             updatedAt: receivesMember || nextMemberIds.length !== group.memberIds.length ? now : group.updatedAt,
         };
     }));
+}
+
+export function updateSubGroupCanvasPos(subGroupId: string, x: number, y: number): void {
+    const now = new Date().toISOString();
+    saveCharacterWorldGroups(loadCharacterWorldGroups().map(group =>
+        group.id === subGroupId
+            ? { ...group, canvasX: x, canvasY: y, updatedAt: now }
+            : group
+    ));
 }
 
 export function addCharacterWorldRelation(groupId: string, fromCharacterId: string, toCharacterId: string, label: string): void {

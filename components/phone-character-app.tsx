@@ -479,6 +479,8 @@ function CharListView({
     ?? worldGroups[0];
   const memberSet = new Set(currentGroup?.memberIds ?? []);
   const worldCharacters = characters.filter(c => memberSet.has(c.id));
+  // 核心：当前卷宗画布也包含“子卷宗”节点
+  const worldSubGroups = worldGroups.filter(g => g.parentId === currentWorldId);
   const worldBgItems = (bgItems || []).filter(item => (item.worldId ?? DEFAULT_CHARACTER_WORLD_ID) === currentWorldId);
   const memberCounts = new Map(worldGroups.map(g => [g.id, g.memberIds.length]));
   const nameById = new Map(characters.map(c => [c.id, c.name || "未命名"]));
@@ -497,6 +499,17 @@ function CharListView({
     }
     return [...pairs.values()];
   })();
+
+  const subGroupIds = new Set(worldSubGroups.map(g => g.id));
+  const charIds = new Set(worldCharacters.map(c => c.id));
+
+  const getPosById = (id: string) => {
+    const char = worldCharacters.find(c => c.id === id);
+    if (char && char.canvasX !== undefined) return { x: char.canvasX + 60, y: (char.canvasY || 0) + 60 };
+    const sg = worldSubGroups.find(g => g.id === id);
+    if (sg && sg.canvasX !== undefined) return { x: sg.canvasX + 50, y: (sg.canvasY || 0) + 40 };
+    return null;
+  };
 
   // ── 世界卷宗：弹层与交互状态 ──
   const [showWorldEditor, setShowWorldEditor] = useState(false);
@@ -1154,6 +1167,41 @@ function CharListView({
               </DraggableNode>
             ))}
 
+            {/* 子卷宗节点：显示为档案袋 */}
+            {worldSubGroups.map((sg, idx) => {
+              const x = sg.canvasX ?? (100 + idx * 120);
+              const y = sg.canvasY ?? 100;
+              return (
+                <DraggableNode
+                  key={sg.id} id={sg.id}
+                  x={x} y={y} rot={sg.canvasRot || 0} zIndex={sg.canvasZIndex || 90}
+                  onDragEnd={(id, nx, ny) => {
+                    import("@/lib/character-world-storage").then(m => m.updateSubGroupCanvasPos(id, nx, ny));
+                    setWorldGroups(prev => prev.map(g => g.id === sg.id ? { ...g, canvasX: nx, canvasY: ny } : g));
+                  }}
+                  onClick={isEditing ? undefined : () => selectWorld(sg.id)}
+                  className={`char-world-node ${linkFromId === sg.id ? "wt-link-source" : ""}`}
+                  isEditing={isEditing}
+                  onEditTap={handleCharEditTap}
+                  use2dTransform
+                  trashBinRef={trashBinRef}
+                  onDragActiveChange={setIsAnyDragging}
+                  onOverTrashChange={setOverTrashBin}
+                  zoom={pan.zoom}
+                  pinchRef={pinchRef}
+                >
+                  <div className="char-world-folder">
+                    <div className="char-world-folder-tab" />
+                    <div className="char-world-folder-body">
+                      <div className="char-world-folder-label">SUB-CASE</div>
+                      <div className="char-world-folder-name">{sg.name}</div>
+                      <div className="char-world-folder-meta">{sg.memberIds.length} CHARS</div>
+                    </div>
+                  </div>
+                </DraggableNode>
+              );
+            })}
+
             {worldCharacters.map((char, idx) => {
               if (char.canvasX === undefined) return null;
               const hash = char.id.charCodeAt(0) + idx * 17;
@@ -1213,11 +1261,11 @@ function CharListView({
             {/* 把拉线放在所有卡片的最后渲染，并设置超高 zIndex，使其盖在所有照片之上 */}
             <svg className="absolute top-0 left-0 w-[10000px] h-[10000px] pointer-events-none overflow-visible" style={{ zIndex: 99999 }}>
               {relationLines.map(line => {
-                const a = worldCharacters.find(c => c.id === line.aId);
-                const b = worldCharacters.find(c => c.id === line.bId);
-                if (!a || !b || a.canvasX === undefined || a.canvasY === undefined || b.canvasX === undefined || b.canvasY === undefined) return null;
-                const x1 = a.canvasX + 60, y1 = a.canvasY + 60;
-                const x2 = b.canvasX + 60, y2 = b.canvasY + 60;
+                const p1 = getPosById(line.aId);
+                const p2 = getPosById(line.bId);
+                if (!p1 || !p2) return null;
+                const { x: x1, y: y1 } = p1;
+                const { x: x2, y: y2 } = p2;
                 return (
                   <g key={line.key}>
                     {/* 连线阴影 (更淡的阴影) */}

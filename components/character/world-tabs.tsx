@@ -20,63 +20,97 @@ export function WorldTabStrip({
   groups: CharacterWorldGroup[];
   currentWorldId: string;
   memberCounts: Map<string, number>;
-  /** 拖拽拍立得悬停中的 tab（高亮为可归档状态） */
   dropTargetWorldId: string | null;
   onSelect: (worldId: string) => void;
-  /** 再次点按当前激活的 tab → 打开卷宗编辑 */
   onOpenEditor: () => void;
   onOpenCreate: (parentId?: string) => void;
 }) {
-  // 顶层卷宗（无 parentId）
-  const rootGroups = groups.filter(g => !g.parentId);
-  // 当前激活节点及其祖先链（用于展开显示子卷宗）
   const activeGroup = groups.find(g => g.id === currentWorldId);
-  const activeChain = new Set<string>();
-  let cur = activeGroup;
-  while (cur) {
-    activeChain.add(cur.id);
-    cur = cur.parentId ? groups.find(g => g.id === cur!.parentId) : undefined;
+  // 获取当前激活卷宗的根节点（最顶层父级）
+  let rootNode = activeGroup;
+  while (rootNode?.parentId) {
+    const parent = groups.find(g => g.id === rootNode!.parentId);
+    if (!parent) break;
+    rootNode = parent;
   }
 
-  const renderGroup = (group: CharacterWorldGroup, depth = 0) => {
-    const active = group.id === currentWorldId;
-    const dropping = group.id === dropTargetWorldId;
-    const children = groups.filter(g => g.parentId === group.id);
-    const hasChildren = children.length > 0;
-    const isExpanded = activeChain.has(group.id);
+  // 钻取模式逻辑：
+  // 1. 如果没有激活卷宗，或激活的是默认卷宗且无父子关系，显示所有顶级卷宗。
+  // 2. 如果激活了某个卷宗及其子级，且当前处于“聚焦模式”：只显示该根卷宗及其直接子级。
+  const isRootActive = activeGroup && !activeGroup.parentId && activeGroup.id !== DEFAULT_CHARACTER_WORLD_ID;
+  const isSubActive = activeGroup && activeGroup.parentId;
+  const isDrilling = isRootActive || isSubActive;
 
+  // 初始显示的顶级卷宗
+  const topGroups = groups.filter(g => !g.parentId);
+
+  if (!isDrilling) {
     return (
-      <div key={group.id} className="wt-node-group">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={active}
-          data-world-tab-id={group.id}
-          className={`wt-tab ${active ? "wt-tab-active" : ""} ${dropping ? "wt-tab-drop" : ""} ${depth > 0 ? "wt-tab-sub" : ""}`}
-          onClick={() => (active ? onOpenEditor() : onSelect(group.id))}
-          style={{ marginLeft: depth * 12 }}
-          title={active ? "点按编辑这份卷宗" : `打开「${group.name}」`}
-        >
-          {depth > 0 && <span className="wt-tab-line">└</span>}
-          <span className="wt-tab-name">{group.name}</span>
-          <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
-          {active && <span className="wt-tab-edit" aria-hidden>✎</span>}
-        </button>
-        {isExpanded && hasChildren && (
-          <div className="wt-sub-nodes">
-            {children.map(child => renderGroup(child, depth + 1))}
-          </div>
-        )}
+      <div className="wt-strip" role="tablist" aria-label="世界卷宗">
+        {topGroups.map(group => (
+          <button
+            key={group.id}
+            type="button"
+            role="tab"
+            aria-selected={group.id === currentWorldId}
+            data-world-tab-id={group.id}
+            className={`wt-tab ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
+            onClick={() => onSelect(group.id)}
+          >
+            <span className="wt-tab-name">{group.name}</span>
+            <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
+          </button>
+        ))}
+        <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()} aria-label="新建世界">＋</button>
       </div>
     );
-  };
+  }
+
+  // 钻取模式：只显示当前根节点及其直接子级
+  const currentRootId = rootNode!.id;
+  const subGroups = groups.filter(g => g.parentId === currentRootId);
 
   return (
-    <div className="wt-strip" role="tablist" aria-label="世界卷宗">
-      {rootGroups.map(group => renderGroup(group))}
-      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()} aria-label="新建世界">
-        ＋
+    <div className="wt-strip" role="tablist" aria-label="卷宗钻取">
+      {/* 根节点：点击它可退出钻取模式 */}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={currentWorldId === currentRootId}
+        className={`wt-tab wt-tab-drill-root ${currentWorldId === currentRootId ? "wt-tab-active" : ""}`}
+        onClick={() => {
+          if (currentWorldId === currentRootId) {
+            // 再次点击已激活的根节点 -> 退出钻取模式（这里通过逻辑判定，实际上是让它变回普通顶级显示）
+            onSelect(DEFAULT_CHARACTER_WORLD_ID);
+          } else {
+            onSelect(currentRootId);
+          }
+        }}
+      >
+        <span className="wt-tab-drill-icon">📂</span>
+        <span className="wt-tab-name">{rootNode!.name}</span>
+        {currentWorldId === currentRootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
       </button>
+
+      <div className="wt-drill-separator">|</div>
+
+      {subGroups.map(group => (
+        <button
+          key={group.id}
+          type="button"
+          role="tab"
+          aria-selected={group.id === currentWorldId}
+          data-world-tab-id={group.id}
+          className={`wt-tab wt-tab-sub ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
+          onClick={() => (group.id === currentWorldId ? onOpenEditor() : onSelect(group.id))}
+        >
+          <span className="wt-tab-name">{group.name}</span>
+          <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
+          {group.id === currentWorldId && <span className="wt-tab-edit" aria-hidden>✎</span>}
+        </button>
+      ))}
+      
+      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(currentRootId)} title="添加子卷宗">＋</button>
     </div>
   );
 }
