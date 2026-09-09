@@ -1480,22 +1480,22 @@ function CharListView({
       )}
 
       {/* 新建卷宗 */}
-             <NewWorldSheet
-          parentName={showNewWorld.parentId ? worldGroups.find(g => g.id === showNewWorld.parentId)?.name : undefined}
-                   onCreate={name => {
+                   <NewWorldSheet
+          parentName={browseParentId ? worldGroups.find(g => g.id === browseParentId)?.name : undefined}
+          onCreate={name => {
             if (browseParentId) {
               const group = createCharacterWorldChild(browseParentId, name);
-              setShowNewWorld(null);
+              setShowNewWorld(false);
               selectWorld(group.id);
               onNotice(`已在本卷宗下建立子卷宗「${group.name}」`);
               return;
             }
-            const group = createCharacterWorldGroup(name, showNewWorld.parentId);
-            setShowNewWorld(null);
+            const group = createCharacterWorldGroup(name);
+            setShowNewWorld(false);
             selectWorld(group.id);
-            onNotice(showNewWorld.parentId ? `已在父级下建立子卷宗「${group.name}」` : `已建立卷宗「${group.name}」`);
+            onNotice(`已建立卷宗「${group.name}」`);
           }}
-          onClose={() => setShowNewWorld(null)}
+          onClose={() => setShowNewWorld(false)}
         />
       )}
 
