@@ -1271,6 +1271,18 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     }
     flipRectsRef.current = next;
   });
+    const blankLongPressRef = useRef<{
+    timer: ReturnType<typeof setTimeout>;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  function cancelBlankLongPress() {
+    const bp = blankLongPressRef.current;
+    if (bp?.timer) clearTimeout(bp.timer);
+    blankLongPressRef.current = null;
+  }
   const longPressRef = useRef<{
     timer: ReturnType<typeof setTimeout>;
     pointerId: number;
@@ -2594,6 +2606,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     const lp = longPressRef.current;
     if (lp?.timer) clearTimeout(lp.timer);
     longPressRef.current = null;
+    cancelBlankLongPress();
   }
 
   function exitEditMode() {
@@ -3696,6 +3709,25 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     // Track tap on empty for "exit edit" detection
     if (editMode) {
       editTapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+          if (!editMode && !activeApp) {
+      const target = e.target as HTMLElement | null;
+      const onItem = target?.closest?.(
+        "button, .widget-wrap, .widget-glass, footer.phone-dock, .edit-mode-edit, .edit-mode-done"
+      );
+      if (!onItem) {
+        cancelBlankLongPress();
+        blankLongPressRef.current = {
+          timer: setTimeout(() => {
+            blankLongPressRef.current = null;
+            setEditMode(true);
+            try { navigator.vibrate?.(30); } catch { /* ignore */ }
+          }, 500),
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+        };
+      }
+    }
     } else {
       // Long press on empty space to enter edit mode
       // Only trigger if clicking on the workspace background or grid, not an icon/widget
@@ -3782,7 +3814,12 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
       const dy2 = e.clientY - lp.startY;
       if (dx2 * dx2 + dy2 * dy2 > 100) cancelLongPress();
     }
-
+    const bp = blankLongPressRef.current;
+    if (bp && bp.pointerId === e.pointerId) {
+      const dx = e.clientX - bp.startX;
+      const dy = e.clientY - bp.startY;
+      if (dx * dx + dy * dy > 100) cancelBlankLongPress();
+    }
     // ── Edit mode drag ──
     const drag = editDragRef.current;
     if (drag && drag.pointerId === e.pointerId) {
