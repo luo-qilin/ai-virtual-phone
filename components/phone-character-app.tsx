@@ -475,6 +475,7 @@ function CharListView({
   const [activeMoveChar, setActiveMoveChar] = useState<Character | null>(null);
 
   // ── 世界卷宗：当前世界派生数据 ──
+   const [browseParentId, setBrowseParentId] = useState<string | null>(null);
   const currentGroup = worldGroups.find(g => g.id === currentWorldId)
     ?? worldGroups.find(g => g.id === DEFAULT_CHARACTER_WORLD_ID)
     ?? worldGroups[0];
@@ -522,7 +523,7 @@ function CharListView({
   // ── 世界卷宗：弹层与交互状态 ──
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   const [showNewWorld, setShowNewWorld] = useState<{ parentId?: string } | null>(null);
-  const [browseParentId, setBrowseParentId] = useState<string | null>(null);
+ 
   const [dropTargetWorldId, setDropTargetWorldId] = useState<string | null>(null);
   // 拉线：编辑模式下点照片A→照片B
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
