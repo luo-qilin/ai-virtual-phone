@@ -4,7 +4,7 @@
 // 视觉隐喻：每个世界 = 一份牛皮纸案卷，激活的 tab 是「翻开的那份」，
 // 与画布纸面连成一体；编辑模式下拍立得可以拖到 tab 上「归档」进别的世界。
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CharacterWorldGroup } from "@/lib/character-world-storage";
 import { DEFAULT_CHARACTER_WORLD_ID } from "@/lib/character-world-storage";
 
