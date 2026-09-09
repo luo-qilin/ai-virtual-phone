@@ -1479,8 +1479,9 @@ function CharListView({
         />
       )}
 
-      {/* 新建卷宗 */}
-                   <NewWorldSheet
+           {/* 新建卷宗 */}
+      {showNewWorld && (
+        <NewWorldSheet
           parentName={browseParentId ? worldGroups.find(g => g.id === browseParentId)?.name : undefined}
           onCreate={name => {
             if (browseParentId) {
