@@ -55,10 +55,13 @@ export function WorldTabStrip({
             aria-selected={group.id === currentWorldId}
             data-world-tab-id={group.id}
             className={`wt-tab ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
+            // 点击父卷宗 -> 进入钻取模式
             onClick={() => onSelect(group.id)}
+            title={group.id === currentWorldId ? "点按编辑" : undefined}
           >
             <span className="wt-tab-name">{group.name}</span>
             <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
+            {group.id === currentWorldId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
           </button>
         ))}
         <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()} aria-label="新建世界">＋</button>
@@ -66,13 +69,13 @@ export function WorldTabStrip({
     );
   }
 
-  // 钻取模式：只显示当前根节点及其直接子级
+  // 钻取模式：只显示该父卷宗及其直接子级
   const currentRootId = rootNode!.id;
   const subGroups = groups.filter(g => g.parentId === currentRootId);
 
   return (
     <div className="wt-strip" role="tablist" aria-label="卷宗钻取">
-      {/* 根节点：点击它可退出钻取模式 */}
+      {/* 激活的父卷宗：再次点击它退出钻取模式 */}
       <button
         type="button"
         role="tab"
@@ -80,7 +83,7 @@ export function WorldTabStrip({
         className={`wt-tab wt-tab-drill-root ${currentWorldId === currentRootId ? "wt-tab-active" : ""}`}
         onClick={() => {
           if (currentWorldId === currentRootId) {
-            // 再次点击已激活的根节点 -> 退出钻取模式（这里通过逻辑判定，实际上是让它变回普通顶级显示）
+            // 再次点击父卷宗 -> 退出钻取模式，回到只有父级世界的列表
             onSelect(DEFAULT_CHARACTER_WORLD_ID);
           } else {
             onSelect(currentRootId);
@@ -91,8 +94,6 @@ export function WorldTabStrip({
         <span className="wt-tab-name">{rootNode!.name}</span>
         {currentWorldId === currentRootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
       </button>
-
-      <div className="wt-drill-separator">|</div>
 
       {subGroups.map(group => (
         <button
@@ -110,7 +111,7 @@ export function WorldTabStrip({
         </button>
       ))}
       
-      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(currentRootId)} title="添加子卷宗">＋</button>
+      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(currentRootId)} title="在该世界下添加子卷宗">＋</button>
     </div>
   );
 }
@@ -153,9 +154,8 @@ export function WorldCaseSheet({
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="世界名称"
-          disabled={isDefault}
+          disabled={isDefault && name === "默认世界"}
         />
-        {isDefault && <p className="wt-paper-hint">默认世界不可改名或删除，删除其他世界时角色会回到这里。</p>}
         <label className="wt-paper-label">世界观描述（会注入该世界所有角色的上下文）</label>
         <textarea
           className="wt-paper-textarea"
@@ -164,16 +164,14 @@ export function WorldCaseSheet({
           placeholder="写下这个世界的背景、时代、阵营边界、共同常识或角色互动前提…"
         />
         <div className="wt-paper-actions">
-          {!isDefault && (
-            confirmDelete ? (
-              <>
-                <span className="wt-paper-confirm">确认删除？角色将并回父级或默认世界</span>
-                <button type="button" className="wt-btn wt-btn-danger" onClick={onDelete}>删除</button>
-                <button type="button" className="wt-btn" onClick={() => setConfirmDelete(false)}>取消</button>
-              </>
-            ) : (
-              <button type="button" className="wt-btn wt-btn-danger" onClick={() => setConfirmDelete(true)}>删除卷宗</button>
-            )
+          {confirmDelete ? (
+            <>
+              <span className="wt-paper-confirm">确认删除？角色将并回父级或重新分配</span>
+              <button type="button" className="wt-btn wt-btn-danger" onClick={onDelete}>删除</button>
+              <button type="button" className="wt-btn" onClick={() => setConfirmDelete(false)}>取消</button>
+            </>
+          ) : (
+            <button type="button" className="wt-btn wt-btn-danger" onClick={() => setConfirmDelete(true)}>删除卷宗</button>
           )}
           <span className="wt-paper-spacer" />
           {onAddSub && (

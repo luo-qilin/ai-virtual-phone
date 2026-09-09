@@ -195,7 +195,6 @@ export function updateCharacterWorldDescription(groupId: string, description: st
 }
 
 export function deleteCharacterWorldGroup(groupId: string): void {
-    if (groupId === DEFAULT_CHARACTER_WORLD_ID) return;
     const groups = loadCharacterWorldGroups();
     const target = groups.find(group => group.id === groupId);
     if (!target) return;
