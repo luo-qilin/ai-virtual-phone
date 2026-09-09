@@ -2642,7 +2642,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     editExtraPageRef.current = null;
   }
   function exitEditMode() {
-    0editExtraPageRef.current = null;
+    editExtraPageRef.current = null;
     setEditMode(false);
     setShowDesktopCustomizer(false);
     setShowWidgetPicker(false);
