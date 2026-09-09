@@ -1139,7 +1139,10 @@ function CharListView({
           selectWorld(id);
         }}
         onOpenEditor={() => setShowWorldEditor(true)}
-        onOpenCreate={(parentId) => setShowNewWorld({ parentId })}
+               onOpenCreate={(parentId) => {
+          if (parentId) setBrowseParentId(parentId);
+          setShowNewWorld(true);
+        }}
       />
       <div
         ref={canvasElRef}
