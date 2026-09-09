@@ -12,7 +12,6 @@ export function WorldTabStrip({
   groups,
   currentWorldId,
   memberCounts,
-  dropTargetWorldId,
   onSelect,
   onOpenEditor,
   onOpenCreate,
@@ -25,74 +24,72 @@ export function WorldTabStrip({
   onOpenEditor: () => void;
   onOpenCreate: (parentId?: string) => void;
 }) {
-  const activeGroup = groups.find(g => g.id === currentWorldId);
-  // 获取当前激活卷宗的根节点（最顶层父级）
-  let rootNode = activeGroup;
-  while (rootNode?.parentId) {
-    const parent = groups.find(g => g.id === rootNode!.parentId);
-    if (!parent) break;
-    rootNode = parent;
-  }
+  const [drillRootId, setDrillRootId] = useState<string | null>(null);
 
-  // 钻取模式逻辑：
-  // 1. 如果没有激活卷宗，或激活的是默认卷宗且无父子关系，显示所有顶级卷宗。
-  // 2. 如果激活了某个卷宗及其子级，且当前处于“聚焦模式”：只显示该根卷宗及其直接子级。
-  const isRootActive = activeGroup && !activeGroup.parentId && activeGroup.id !== DEFAULT_CHARACTER_WORLD_ID;
-  const isSubActive = activeGroup && activeGroup.parentId;
-  const isDrilling = isRootActive || isSubActive;
+  // 如果当前选中的 ID 已经不在 drillRoot 的名下了，强制重置 drillRoot
+  useEffect(() => {
+    if (drillRootId) {
+      const active = groups.find(g => g.id === currentWorldId);
+      if (active && active.id !== drillRootId && active.parentId !== drillRootId) {
+        setDrillRootId(null);
+      }
+    }
+  }, [currentWorldId, drillRootId, groups]);
 
-  // 初始显示的顶级卷宗
-  const topGroups = groups.filter(g => !g.parentId);
-
-  if (!isDrilling) {
+  // 顶级列表：只显示没有 parentId 的父世界
+  if (!drillRootId) {
+    const parentGroups = groups.filter(g => !g.parentId);
     return (
-      <div className="wt-strip" role="tablist" aria-label="世界卷宗">
-        {topGroups.map(group => (
+      <div className="wt-strip" role="tablist">
+        {parentGroups.map(group => (
           <button
             key={group.id}
             type="button"
             role="tab"
             aria-selected={group.id === currentWorldId}
-            data-world-tab-id={group.id}
             className={`wt-tab ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
-            // 点击父卷宗 -> 进入钻取模式
-            onClick={() => onSelect(group.id)}
-            title={group.id === currentWorldId ? "点按编辑" : undefined}
+            onClick={() => {
+              if (group.id === currentWorldId) {
+                // 点击已选中的父世界 -> 进入钻取
+                setDrillRootId(group.id);
+              } else {
+                onSelect(group.id);
+              }
+            }}
           >
             <span className="wt-tab-name">{group.name}</span>
             <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
             {group.id === currentWorldId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
           </button>
         ))}
-        <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()} aria-label="新建世界">＋</button>
+        <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()}>＋</button>
       </div>
     );
   }
 
-  // 钻取模式：只显示该父卷宗及其直接子级
-  const currentRootId = rootNode!.id;
-  const subGroups = groups.filter(g => g.parentId === currentRootId);
+  // 钻取模式：显示该父级和它的子级
+  const currentParent = groups.find(g => g.id === drillRootId);
+  const subGroups = groups.filter(g => g.parentId === drillRootId);
 
   return (
-    <div className="wt-strip" role="tablist" aria-label="卷宗钻取">
-      {/* 激活的父卷宗：再次点击它退出钻取模式 */}
+    <div className="wt-strip" role="tablist">
+      {/* 父级 Tab：再次点击它退出钻取 */}
       <button
         type="button"
         role="tab"
-        aria-selected={currentWorldId === currentRootId}
-        className={`wt-tab wt-tab-drill-root ${currentWorldId === currentRootId ? "wt-tab-active" : ""}`}
+        aria-selected={currentWorldId === drillRootId}
+        className={`wt-tab wt-tab-drill-root ${currentWorldId === drillRootId ? "wt-tab-active" : ""}`}
         onClick={() => {
-          if (currentWorldId === currentRootId) {
-            // 再次点击父卷宗 -> 退出钻取模式，回到只有父级世界的列表
-            onSelect(DEFAULT_CHARACTER_WORLD_ID);
+          if (currentWorldId === drillRootId) {
+            setDrillRootId(null); // 退回父级列表
           } else {
-            onSelect(currentRootId);
+            onSelect(drillRootId!);
           }
         }}
       >
         <span className="wt-tab-drill-icon">📂</span>
-        <span className="wt-tab-name">{rootNode!.name}</span>
-        {currentWorldId === currentRootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
+        <span className="wt-tab-name">{currentParent?.name}</span>
+        {currentWorldId === drillRootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
       </button>
 
       {subGroups.map(group => (
@@ -101,7 +98,6 @@ export function WorldTabStrip({
           type="button"
           role="tab"
           aria-selected={group.id === currentWorldId}
-          data-world-tab-id={group.id}
           className={`wt-tab wt-tab-sub ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
           onClick={() => (group.id === currentWorldId ? onOpenEditor() : onSelect(group.id))}
         >
@@ -110,8 +106,7 @@ export function WorldTabStrip({
           {group.id === currentWorldId && <span className="wt-tab-edit" aria-hidden>✎</span>}
         </button>
       ))}
-      
-      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(currentRootId)} title="在该世界下添加子卷宗">＋</button>
+      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(drillRootId!)}>＋</button>
     </div>
   );
 }

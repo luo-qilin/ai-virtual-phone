@@ -200,21 +200,23 @@ export function deleteCharacterWorldGroup(groupId: string): void {
     if (!target) return;
     
     const now = new Date().toISOString();
-    const parentId = target.parentId || DEFAULT_CHARACTER_WORLD_ID;
+    const remaining = groups.filter(group => group.id !== groupId);
     
-    saveCharacterWorldGroups(groups
-        .filter(group => group.id !== groupId)
-        .map(group => {
-            // 被删除卷宗的角色：如果该卷宗有父级，则并入父级；否则并入默认世界
-            if (group.id === parentId) {
-                return { ...group, memberIds: [...group.memberIds, ...target.memberIds], updatedAt: now };
-            }
-            // 被删除卷宗的子卷宗：提升一级，归属于被删卷宗的父级（或变根级）
-            if (group.parentId === groupId) {
-                return { ...group, parentId: target.parentId, updatedAt: now };
-            }
-            return group;
-        }));
+    // 如果删除了最后一个卷宗，系统会自动在 normalize 时重建默认世界，所以这里只需处理逻辑
+    const fallbackGroup = remaining.find(g => g.id === target.parentId) || remaining[0];
+    const fallbackId = fallbackGroup?.id;
+
+    saveCharacterWorldGroups(remaining.map(group => {
+        // 被删除卷宗的角色：并入父级；若无父级则并入第一个剩下的卷宗
+        if (group.id === fallbackId) {
+            return { ...group, memberIds: Array.from(new Set([...group.memberIds, ...target.memberIds])), updatedAt: now };
+        }
+        // 被删除卷宗的子卷宗：提升一级
+        if (group.parentId === groupId) {
+            return { ...group, parentId: target.parentId, updatedAt: now };
+        }
+        return group;
+    }));
 }
 
 export function moveCharacterToWorld(characterId: string, groupId: string): void {
