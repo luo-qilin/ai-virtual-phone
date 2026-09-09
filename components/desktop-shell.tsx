@@ -1341,6 +1341,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     mergeTargetPage: DesktopPageKey | null;
   } | null>(null);
   const editTapRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+    const editExtraPageRef = useRef<DesktopPageKey | null>(null);
   // Refs to latest state for use in stable callbacks
   const currentPageIndexRef = useRef(currentPageIndex);
   currentPageIndexRef.current = currentPageIndex;
@@ -2608,8 +2609,40 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     longPressRef.current = null;
     cancelBlankLongPress();
   }
+  function addEditBlankPage(): DesktopPageKey | null {
+    if (editExtraPageRef.current) return editExtraPageRef.current;
+    const keys = getDesktopPageKeysForState(layoutRef.current, widgetsRef.current);
+    const nextKey = getDesktopPageKey(keys.length + 1);
+    setLayout((prev) => {
+      const next = cloneDesktopLayout(prev, widgetsRef.current);
+      ensureDesktopPage(next, nextKey);
+      layoutRef.current = next;
+      return next;
+    });
+    editExtraPageRef.current = nextKey;
+    return nextKey;
+  }
 
+  function removeEditBlankPageIfEmpty() {
+    const extra = editExtraPageRef.current;
+    if (!extra) return;
+    const pageNum = getDesktopPageNumber(extra);
+    const hasIcons = (layoutRef.current[extra] ?? []).length > 0;
+    const hasWidgets = widgetsRef.current.some((w) => w.page === pageNum);
+    if (hasIcons || hasWidgets) {
+      editExtraPageRef.current = null;
+      return;
+    }
+    setLayout((prev) => {
+      const next = cloneDesktopLayout(prev, widgetsRef.current);
+      delete next[extra];
+      layoutRef.current = next;
+      return next;
+    });
+    editExtraPageRef.current = null;
+  }
   function exitEditMode() {
+    0editExtraPageRef.current = null;
     setEditMode(false);
     setShowDesktopCustomizer(false);
     setShowWidgetPicker(false);
@@ -3920,9 +3953,22 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     const swipeThreshold = Math.max(SWIPE_MIN_THRESHOLD, pageWidth * SWIPE_THRESHOLD_RATIO);
 
     const page = currentPageIndexRef.current;
-    let targetPageIndex = page;
+       let targetPageIndex = page;
     if (Math.abs(dx) > swipeThreshold) {
-      targetPageIndex = Math.min(Math.max(0, pageCount - 1), Math.max(0, page + (dx < 0 ? 1 : -1)));
+      if (editMode && dx < 0 && page >= pageCount - 1) {
+        addEditBlankPage();
+        targetPageIndex = page + 1;
+      } else if (
+        editMode &&
+        dx > 0 &&
+        editExtraPageRef.current &&
+        page === pageCount - 1
+      ) {
+        targetPageIndex = Math.max(0, page - 1);
+        window.setTimeout(() => removeEditBlankPageIfEmpty(), 0);
+      } else {
+        targetPageIndex = Math.min(Math.max(0, pageCount - 1), Math.max(0, page + (dx < 0 ? 1 : -1)));
+      }
     }
 
     // Re-enable the transition, clear the finger offset, and commit the page.
