@@ -3696,6 +3696,33 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
     // Track tap on empty for "exit edit" detection
     if (editMode) {
       editTapRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+    } else {
+      // Long press on empty space to enter edit mode
+      // Only trigger if clicking on the workspace background or grid, not an icon/widget
+      const isContainer = (e.target as HTMLElement).classList.contains('phone-workspace') || 
+                          (e.target as HTMLElement).classList.contains('icon-grid') ||
+                          (e.target as HTMLElement).classList.contains('phone-swipe-layer');
+      
+      if (isContainer) {
+        cancelLongPress();
+        const pointerId = e.pointerId;
+        const clientX = e.clientX;
+        const clientY = e.clientY;
+        longPressRef.current = {
+          timer: setTimeout(() => {
+            longPressRef.current = null;
+            setEditMode(true);
+            try { navigator.vibrate?.(30); } catch {}
+          }, 600),
+          pointerId,
+          startX: clientX,
+          startY: clientY,
+          itemType: "icon", // unused
+          itemId: "",
+          page: "page1",
+          element: e.currentTarget as HTMLElement,
+        };
+      }
     }
     // Start swipe tracking (works in both normal and edit mode)
     const s = swipeRef.current;
