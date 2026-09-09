@@ -19,6 +19,7 @@ export type CharacterWorldRelation = {
 
 export type CharacterWorldGroup = {
     id: string;
+    parentId?: string; // 父级卷宗 ID
     name: string;
     description: string;
     memberIds: string[];
@@ -152,11 +153,12 @@ export function saveCharacterWorldGroups(groups: CharacterWorldGroup[]): void {
     dispatchUpdated();
 }
 
-export function createCharacterWorldGroup(name: string): CharacterWorldGroup {
+export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
     const groups = loadCharacterWorldGroups();
     const now = new Date().toISOString();
     const group: CharacterWorldGroup = {
         id: generateId("world"),
+        parentId,
         name: name.trim() || "新的世界",
         description: "",
         memberIds: [],
@@ -191,13 +193,23 @@ export function deleteCharacterWorldGroup(groupId: string): void {
     const groups = loadCharacterWorldGroups();
     const target = groups.find(group => group.id === groupId);
     if (!target) return;
+    
     const now = new Date().toISOString();
+    const parentId = target.parentId || DEFAULT_CHARACTER_WORLD_ID;
+    
     saveCharacterWorldGroups(groups
         .filter(group => group.id !== groupId)
-        .map(group => group.id === DEFAULT_CHARACTER_WORLD_ID
-            ? { ...group, memberIds: [...group.memberIds, ...target.memberIds], updatedAt: now }
-            : group
-        ));
+        .map(group => {
+            // 被删除卷宗的角色：如果该卷宗有父级，则并入父级；否则并入默认世界
+            if (group.id === parentId) {
+                return { ...group, memberIds: [...group.memberIds, ...target.memberIds], updatedAt: now };
+            }
+            // 被删除卷宗的子卷宗：提升一级，归属于被删卷宗的父级（或变根级）
+            if (group.parentId === groupId) {
+                return { ...group, parentId: target.parentId, updatedAt: now };
+            }
+            return group;
+        }));
 }
 
 export function moveCharacterToWorld(characterId: string, groupId: string): void {

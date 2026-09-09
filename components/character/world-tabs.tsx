@@ -25,31 +25,56 @@ export function WorldTabStrip({
   onSelect: (worldId: string) => void;
   /** 再次点按当前激活的 tab → 打开卷宗编辑 */
   onOpenEditor: () => void;
-  onOpenCreate: () => void;
+  onOpenCreate: (parentId?: string) => void;
 }) {
+  // 顶层卷宗（无 parentId）
+  const rootGroups = groups.filter(g => !g.parentId);
+  // 当前激活节点及其祖先链（用于展开显示子卷宗）
+  const activeGroup = groups.find(g => g.id === currentWorldId);
+  const activeChain = new Set<string>();
+  let cur = activeGroup;
+  while (cur) {
+    activeChain.add(cur.id);
+    cur = cur.parentId ? groups.find(g => g.id === cur!.parentId) : undefined;
+  }
+
+  const renderGroup = (group: CharacterWorldGroup, depth = 0) => {
+    const active = group.id === currentWorldId;
+    const dropping = group.id === dropTargetWorldId;
+    const children = groups.filter(g => g.parentId === group.id);
+    const hasChildren = children.length > 0;
+    const isExpanded = activeChain.has(group.id);
+
+    return (
+      <div key={group.id} className="wt-node-group">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={active}
+          data-world-tab-id={group.id}
+          className={`wt-tab ${active ? "wt-tab-active" : ""} ${dropping ? "wt-tab-drop" : ""} ${depth > 0 ? "wt-tab-sub" : ""}`}
+          onClick={() => (active ? onOpenEditor() : onSelect(group.id))}
+          style={{ marginLeft: depth * 12 }}
+          title={active ? "点按编辑这份卷宗" : `打开「${group.name}」`}
+        >
+          {depth > 0 && <span className="wt-tab-line">└</span>}
+          <span className="wt-tab-name">{group.name}</span>
+          <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
+          {active && <span className="wt-tab-edit" aria-hidden>✎</span>}
+        </button>
+        {isExpanded && hasChildren && (
+          <div className="wt-sub-nodes">
+            {children.map(child => renderGroup(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="wt-strip" role="tablist" aria-label="世界卷宗">
-      {groups.map(group => {
-        const active = group.id === currentWorldId;
-        const dropping = group.id === dropTargetWorldId;
-        return (
-          <button
-            key={group.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            data-world-tab-id={group.id}
-            className={`wt-tab ${active ? "wt-tab-active" : ""} ${dropping ? "wt-tab-drop" : ""}`}
-            onClick={() => (active ? onOpenEditor() : onSelect(group.id))}
-            title={active ? "点按编辑这份卷宗" : `打开「${group.name}」`}
-          >
-            <span className="wt-tab-name">{group.name}</span>
-            <span className="wt-tab-count">{memberCounts.get(group.id) ?? 0}</span>
-            {active && <span className="wt-tab-edit" aria-hidden>✎</span>}
-          </button>
-        );
-      })}
-      <button type="button" className="wt-tab wt-tab-new" onClick={onOpenCreate} aria-label="新建世界">
+      {rootGroups.map(group => renderGroup(group))}
+      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate()} aria-label="新建世界">
         ＋
       </button>
     </div>
@@ -62,12 +87,14 @@ export function WorldCaseSheet({
   onRename,
   onUpdateDescription,
   onDelete,
+  onAddSub,
   onClose,
 }: {
   group: CharacterWorldGroup;
   onRename: (name: string) => void;
   onUpdateDescription: (description: string) => void;
   onDelete: () => void;
+  onAddSub?: () => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState(group.name);
@@ -106,7 +133,7 @@ export function WorldCaseSheet({
           {!isDefault && (
             confirmDelete ? (
               <>
-                <span className="wt-paper-confirm">确认删除？角色将并回默认世界</span>
+                <span className="wt-paper-confirm">确认删除？角色将并回父级或默认世界</span>
                 <button type="button" className="wt-btn wt-btn-danger" onClick={onDelete}>删除</button>
                 <button type="button" className="wt-btn" onClick={() => setConfirmDelete(false)}>取消</button>
               </>
@@ -115,6 +142,9 @@ export function WorldCaseSheet({
             )
           )}
           <span className="wt-paper-spacer" />
+          {onAddSub && (
+            <button type="button" className="wt-btn" onClick={onAddSub} style={{ marginRight: 8 }}>＋子卷宗</button>
+          )}
           <button type="button" className="wt-btn wt-btn-primary" onClick={save}>完成</button>
         </div>
       </div>
@@ -126,9 +156,11 @@ export function WorldCaseSheet({
 export function NewWorldSheet({
   onCreate,
   onClose,
+  parentName,
 }: {
   onCreate: (name: string) => void;
   onClose: () => void;
+  parentName?: string;
 }) {
   const [name, setName] = useState("");
   const submit = () => {
@@ -139,8 +171,10 @@ export function NewWorldSheet({
     <div className="wt-modal" onClick={onClose}>
       <div className="wt-paper" onClick={e => e.stopPropagation()}>
         <div className="wt-paper-tape" aria-hidden />
-        <div className="wt-paper-kicker">NEW CASE</div>
-        <label className="wt-paper-label">新卷宗名称</label>
+        <div className="wt-paper-kicker">NEW {parentName ? 'SUB-CASE' : 'CASE'}</div>
+        <label className="wt-paper-label">
+          {parentName ? `在「${parentName}」下添加子卷宗` : '新卷宗名称'}
+        </label>
         <input
           className="wt-paper-input"
           value={name}

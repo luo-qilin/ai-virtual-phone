@@ -500,7 +500,7 @@ function CharListView({
 
   // ── 世界卷宗：弹层与交互状态 ──
   const [showWorldEditor, setShowWorldEditor] = useState(false);
-  const [showNewWorld, setShowNewWorld] = useState(false);
+  const [showNewWorld, setShowNewWorld] = useState<{ parentId?: string } | null>(null);
   const [dropTargetWorldId, setDropTargetWorldId] = useState<string | null>(null);
   // 拉线：编辑模式下点照片A→照片B
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
@@ -1103,7 +1103,7 @@ function CharListView({
         dropTargetWorldId={dropTargetWorldId}
         onSelect={selectWorld}
         onOpenEditor={() => setShowWorldEditor(true)}
-        onOpenCreate={() => setShowNewWorld(true)}
+        onOpenCreate={(parentId) => setShowNewWorld({ parentId })}
       />
       <div
         ref={canvasElRef}
@@ -1394,11 +1394,16 @@ function CharListView({
           group={currentGroup}
           onRename={name => renameCharacterWorldGroup(currentGroup.id, name)}
           onUpdateDescription={description => updateCharacterWorldDescription(currentGroup.id, description)}
+          onAddSub={() => {
+            setShowWorldEditor(false);
+            setShowNewWorld({ parentId: currentGroup.id });
+          }}
           onDelete={() => {
+            const parentId = currentGroup.parentId || DEFAULT_CHARACTER_WORLD_ID;
             deleteCharacterWorldGroup(currentGroup.id);
             setShowWorldEditor(false);
-            selectWorld(DEFAULT_CHARACTER_WORLD_ID);
-            onNotice("卷宗已删除，角色并回默认世界");
+            selectWorld(parentId);
+            onNotice(currentGroup.parentId ? "卷宗已删除，角色并回父级卷宗" : "卷宗已删除，角色并回默认世界");
           }}
           onClose={() => setShowWorldEditor(false)}
         />
@@ -1407,13 +1412,14 @@ function CharListView({
       {/* 新建卷宗 */}
       {showNewWorld && (
         <NewWorldSheet
+          parentName={showNewWorld.parentId ? worldGroups.find(g => g.id === showNewWorld.parentId)?.name : undefined}
           onCreate={name => {
-            const group = createCharacterWorldGroup(name);
-            setShowNewWorld(false);
+            const group = createCharacterWorldGroup(name, showNewWorld.parentId);
+            setShowNewWorld(null);
             selectWorld(group.id);
-            onNotice(`已建立卷宗「${group.name}」`);
+            onNotice(showNewWorld.parentId ? `已在父级下建立子卷宗「${group.name}」` : `已建立卷宗「${group.name}」`);
           }}
-          onClose={() => setShowNewWorld(false)}
+          onClose={() => setShowNewWorld(null)}
         />
       )}
 
