@@ -12,6 +12,8 @@ export function WorldTabStrip({
   groups,
   currentWorldId,
   memberCounts,
+  dropTargetWorldId,
+  parentId,
   onSelect,
   onOpenEditor,
   onOpenCreate,
@@ -20,6 +22,7 @@ export function WorldTabStrip({
   currentWorldId: string;
   memberCounts: Map<string, number>;
   dropTargetWorldId: string | null;
+  parentId?: string | null;
   onSelect: (worldId: string) => void;
   onOpenEditor: () => void;
   onOpenCreate: (parentId?: string) => void;
@@ -37,7 +40,7 @@ export function WorldTabStrip({
   }, [currentWorldId, drillRootId, groups]);
 
   // 顶级列表：只显示没有 parentId 的父世界
-  if (!drillRootId) {
+    if (!parentId && !drillRootId) {
     const parentGroups = groups.filter(g => !g.parentId);
     return (
       <div className="wt-strip" role="tablist">
@@ -68,8 +71,9 @@ export function WorldTabStrip({
   }
 
   // 钻取模式：显示该父级和它的子级
-  const currentParent = groups.find(g => g.id === drillRootId);
-  const subGroups = groups.filter(g => g.parentId === drillRootId);
+   const rootId = parentId || drillRootId;
+  const currentParent = groups.find(g => g.id === rootId);
+  const subGroups = groups.filter(g => g.parentId === rootId);
 
   return (
     <div className="wt-strip" role="tablist">
@@ -77,19 +81,19 @@ export function WorldTabStrip({
       <button
         type="button"
         role="tab"
-        aria-selected={currentWorldId === drillRootId}
-        className={`wt-tab wt-tab-drill-root ${currentWorldId === drillRootId ? "wt-tab-active" : ""}`}
+        aria-selected={currentWorldId === rootId}
+        className={`wt-tab wt-tab-drill-root ${currentWorldId === rootId ? "wt-tab-active" : ""}`}
         onClick={() => {
-          if (currentWorldId === drillRootId) {
+          if (currentWorldId === rootId) {
             setDrillRootId(null); // 退回父级列表
           } else {
-            onSelect(drillRootId!);
+            onSelect(rootId!);
           }
         }}
       >
         <span className="wt-tab-drill-icon">📂</span>
         <span className="wt-tab-name">{currentParent?.name}</span>
-        {currentWorldId === drillRootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
+        {currentWorldId === rootId && <span className="wt-tab-edit" onClick={(e) => { e.stopPropagation(); onOpenEditor(); }} aria-hidden>✎</span>}
       </button>
 
       {subGroups.map(group => (
@@ -106,7 +110,7 @@ export function WorldTabStrip({
           {group.id === currentWorldId && <span className="wt-tab-edit" aria-hidden>✎</span>}
         </button>
       ))}
-      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(drillRootId!)}>＋</button>
+      <button type="button" className="wt-tab wt-tab-new" onClick={() => onOpenCreate(rootId!)}>＋</button>
     </div>
   );
 }

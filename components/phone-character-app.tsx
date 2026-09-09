@@ -21,6 +21,7 @@ import { generateSupportingCharacters, materializeSupportingCharacter, type Gene
 import {
   addCharacterWorldRelation,
   createCharacterWorldGroup,
+  createCharacterWorldChild,
   deleteCharacterWorldGroup,
   deleteCharacterWorldRelation,
   getCharacterWorldGroupId,
@@ -483,6 +484,13 @@ function CharListView({
   const worldSubGroups = worldGroups.filter(g => g.parentId === currentWorldId);
   const worldBgItems = (bgItems || []).filter(item => (item.worldId ?? DEFAULT_CHARACTER_WORLD_ID) === currentWorldId);
   const memberCounts = new Map(worldGroups.map(g => [g.id, g.memberIds.length]));
+    const rootGroups = worldGroups.filter(g => !g.parentId);
+  const stripGroups = browseParentId
+    ? [
+        worldGroups.find(g => g.id === browseParentId),
+        ...worldGroups.filter(g => g.parentId === browseParentId),
+      ].filter((g): g is CharacterWorldGroup => Boolean(g))
+    : rootGroups;
   const nameById = new Map(characters.map(c => [c.id, c.name || "未命名"]));
   // 连线与世界观关系同步：同一对角色的多条关系合并为一条线
   const relationLines: CanvasRelationLine[] = (() => {
@@ -514,6 +522,7 @@ function CharListView({
   // ── 世界卷宗：弹层与交互状态 ──
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   const [showNewWorld, setShowNewWorld] = useState<{ parentId?: string } | null>(null);
+  const [browseParentId, setBrowseParentId] = useState<string | null>(null);
   const [dropTargetWorldId, setDropTargetWorldId] = useState<string | null>(null);
   // 拉线：编辑模式下点照片A→照片B
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
@@ -1044,7 +1053,10 @@ function CharListView({
         leftAction={
           <button
             className="flex items-center justify-center w-[34px] h-[34px] rounded-full bg-black/5 text-[#666] hover:bg-black/10 transition-colors"
-            onClick={onClose}
+              onClick={() => {
+              if (browseParentId) setBrowseParentId(null);
+              else onClose();
+            }}
             aria-label="返回桌面"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1109,12 +1121,22 @@ function CharListView({
         }
       >
       {/* 世界卷宗标签条：每个世界一份案卷、一张画布 */}
-      <WorldTabStrip
-        groups={worldGroups}
+           <WorldTabStrip
+        groups={stripGroups}
         currentWorldId={currentWorldId}
         memberCounts={memberCounts}
         dropTargetWorldId={dropTargetWorldId}
-        onSelect={selectWorld}
+        parentId={browseParentId}
+        onSelect={(id) => {
+          const g = worldGroups.find(x => x.id === id);
+          if (!g) return;
+          if (!browseParentId && !g.parentId) {
+            setBrowseParentId(g.id);
+            selectWorld(g.id);
+            return;
+          }
+          selectWorld(id);
+        }}
         onOpenEditor={() => setShowWorldEditor(true)}
         onOpenCreate={(parentId) => setShowNewWorld({ parentId })}
       />
@@ -1458,10 +1480,16 @@ function CharListView({
       )}
 
       {/* 新建卷宗 */}
-      {showNewWorld && (
-        <NewWorldSheet
+             <NewWorldSheet
           parentName={showNewWorld.parentId ? worldGroups.find(g => g.id === showNewWorld.parentId)?.name : undefined}
-          onCreate={name => {
+                   onCreate={name => {
+            if (browseParentId) {
+              const group = createCharacterWorldChild(browseParentId, name);
+              setShowNewWorld(null);
+              selectWorld(group.id);
+              onNotice(`已在本卷宗下建立子卷宗「${group.name}」`);
+              return;
+            }
             const group = createCharacterWorldGroup(name, showNewWorld.parentId);
             setShowNewWorld(null);
             selectWorld(group.id);

@@ -24,6 +24,7 @@ export type CharacterWorldGroup = {
     description: string;
     memberIds: string[];
     relations: CharacterWorldRelation[];
+    parentId?: string | null;
     createdAt: string;
     updatedAt: string;
     canvasX?: number;
@@ -115,6 +116,7 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
                 description: typeof group.description === "string" ? group.description.trim() : "",
                 memberIds: members,
                 relations,
+                parentId: typeof group.parentId === "string" && group.parentId ? group.parentId : null,
                 createdAt: group.createdAt || now,
                 updatedAt: group.updatedAt || now,
             };
@@ -159,16 +161,17 @@ export function saveCharacterWorldGroups(groups: CharacterWorldGroup[]): void {
     dispatchUpdated();
 }
 
-export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
+export function createCharacterWorldChild(parentId: string, name: string): CharacterWorldGroup {
     const groups = loadCharacterWorldGroups();
+    const parent = groups.find(g => g.id === parentId && !g.parentId);
     const now = new Date().toISOString();
     const group: CharacterWorldGroup = {
         id: generateId("world"),
-        parentId,
-        name: name.trim() || "新的世界",
+        name: name.trim() || "子卷宗",
         description: "",
         memberIds: [],
         relations: [],
+        parentId: parent ? parentId : null,
         createdAt: now,
         updatedAt: now,
     };
@@ -195,28 +198,32 @@ export function updateCharacterWorldDescription(groupId: string, description: st
 }
 
 export function deleteCharacterWorldGroup(groupId: string): void {
+    if (groupId === DEFAULT_CHARACTER_WORLD_ID) return;
     const groups = loadCharacterWorldGroups();
     const target = groups.find(group => group.id === groupId);
     if (!target) return;
-    
     const now = new Date().toISOString();
-    const remaining = groups.filter(group => group.id !== groupId);
-    
-    // 如果删除了最后一个卷宗，系统会自动在 normalize 时重建默认世界，所以这里只需处理逻辑
-    const fallbackGroup = remaining.find(g => g.id === target.parentId) || remaining[0];
-    const fallbackId = fallbackGroup?.id;
 
-    saveCharacterWorldGroups(remaining.map(group => {
-        // 被删除卷宗的角色：并入父级；若无父级则并入第一个剩下的卷宗
-        if (group.id === fallbackId) {
-            return { ...group, memberIds: Array.from(new Set([...group.memberIds, ...target.memberIds])), updatedAt: now };
-        }
-        // 被删除卷宗的子卷宗：提升一级
-        if (group.parentId === groupId) {
-            return { ...group, parentId: target.parentId, updatedAt: now };
-        }
-        return group;
-    }));
+    if (!target.parentId) {
+        const alsoDelete = groups.filter(g => g.parentId === groupId);
+        const moved = [...target.memberIds, ...alsoDelete.flatMap(g => g.memberIds)];
+        const removeIds = new Set([groupId, ...alsoDelete.map(g => g.id)]);
+        saveCharacterWorldGroups(groups
+            .filter(g => !removeIds.has(g.id))
+            .map(g => g.id === DEFAULT_CHARACTER_WORLD_ID
+                ? { ...g, memberIds: Array.from(new Set([...g.memberIds, ...moved])), updatedAt: now }
+                : g
+            ));
+        return;
+    }
+
+    const parentId = target.parentId;
+    saveCharacterWorldGroups(groups
+        .filter(g => g.id !== groupId)
+        .map(g => g.id === parentId
+            ? { ...g, memberIds: Array.from(new Set([...g.memberIds, ...target.memberIds])), updatedAt: now }
+            : g
+        ));
 }
 
 export function moveCharacterToWorld(characterId: string, groupId: string): void {
