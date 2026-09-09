@@ -179,6 +179,24 @@ export function createCharacterWorldChild(parentId: string, name: string): Chara
     return group;
 }
 
+export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
+    if (parentId) return createCharacterWorldChild(parentId, name);
+    const groups = loadCharacterWorldGroups();
+    const now = new Date().toISOString();
+    const group: CharacterWorldGroup = {
+        id: generateId("world"),
+        name: name.trim() || "新的世界",
+        description: "",
+        memberIds: [],
+        relations: [],
+        parentId: null,
+        createdAt: now,
+        updatedAt: now,
+    };
+    saveCharacterWorldGroups([...groups, group]);
+    return group;
+}
+
 export function renameCharacterWorldGroup(groupId: string, name: string): void {
     const now = new Date().toISOString();
     saveCharacterWorldGroups(loadCharacterWorldGroups().map(group =>
