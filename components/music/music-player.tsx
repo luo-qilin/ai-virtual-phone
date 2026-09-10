@@ -613,8 +613,8 @@ export default function MusicPlayer() {
                         </button>
                     </div>
                     {view !== "together" && (
-                        <div className="mp-song-sub" style={{ fontSize: 11, opacity: 0.7, marginTop: 2, textAlign: "center", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {track.title} - {track.artist || "未知歌手"}
+                        <div className="mp-song-sub" style={{ fontSize: 11, opacity: 0.7, marginTop: 2, textAlign: "center", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {activeLyricText || `${track.title} - ${track.artist || "未知歌手"}`}
                         </div>
                     )}
                 </div>
