@@ -473,7 +473,8 @@ function CharListView({
   const fileRef = useRef<HTMLInputElement>(null);
   const [showNpcGen, setShowNpcGen] = useState(false);
   const [activeMoveChar, setActiveMoveChar] = useState<Character | null>(null);
-
+  const [activeSubWorld, setActiveSubWorld] = useState<import("@/lib/character-world-storage").CharacterWorldSubGroup | null>(null);
+  
   // ── 世界卷宗：当前世界派生数据 ──
    const [browseParentId, setBrowseParentId] = useState<string | null>(null);
   const currentGroup = worldGroups.find(g => g.id === currentWorldId)
@@ -1467,6 +1468,11 @@ function CharListView({
       {showWorldEditor && currentGroup && (
         <WorldCaseSheet
           group={currentGroup}
+                    onOpenSubChat={(sub) => {
+            setActiveSubWorld(sub);
+            setShowWorldEditor(false);
+            onNotice(`已选子卷宗「${sub.name}」。群聊入口还没接通，关系请在本卷宗画布上拉线。`);
+          }}
           onRename={name => renameCharacterWorldGroup(currentGroup.id, name)}
           onUpdateDescription={description => updateCharacterWorldDescription(currentGroup.id, description)}
           onAddSub={() => {
