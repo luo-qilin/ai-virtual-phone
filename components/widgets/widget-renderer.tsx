@@ -166,90 +166,205 @@ function WidgetContent({
    Weather — 晴空天气小组件 (2x2)
    ══════════════════════════════════════════ */
 function WeatherWidget() {
-  const [data, setData] = useState<any>(null);
-  const [city, setCity] = useState("定位中...");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    async function fetchWeather() {
-      try {
-        // 1. 尝试从 APP 私有数据库读取上次保存的城市
-        const STORAGE_KEY = "lumen_weather_last_city_v1";
-        // 注意：小组件在宿主环境运行，无法直接用 AiPhone.db 读 APP 私有数据，
-        // 但我们可以直接访问 kvGet (IndexedDB) 里的数据，或者使用默认坐标。
-        // 这里为了组件独立性，优先执行一次极速 IP 定位。
-        const ipUrl = "https://whois.pconline.com.cn/ipJson.jsp?json=true";
-        const ipRes = await fetch(ipUrl);
-        const ipData = ipRes.ok ? await ipRes.json() : null;
-        const cityName = ipData?.region || ipData?.city || "北京市";
-        if (cancelled) return;
-        setCity(cityName);
+    const container = containerRef.current;
+    if (!container) return;
 
-        // 2. 获取经纬度 (北京默认)
-        let lat = 39.90, lng = 116.40;
-        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=zh`;
-        const geoRes = await fetch(geoUrl);
-        const geoData = geoRes.ok ? await geoRes.json() : null;
-        if (geoData?.results?.[0]) {
-          lat = geoData.results[0].latitude;
-          lng = geoData.results[0].longitude;
+    // 创建 Shadow DOM 以隔离样式
+    const shadow = container.attachShadow({ mode: 'open' });
+
+    // 注入小卷设计的 HTML 和 CSS
+    shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-
-        // 3. 获取天气
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-        const wRes = await fetch(weatherUrl);
-        const wData = wRes.ok ? await wRes.json() : null;
-        if (!cancelled) setData(wData);
-      } catch (e) {
-        console.error("Weather widget fetch failed", e);
-      }
-    }
-    fetchWeather();
-    const timer = setInterval(fetchWeather, 30 * 60 * 1000); // 30分钟刷一次
-    return () => { cancelled = true; clearInterval(timer); };
-  }, []);
-
-  if (!data) return (
-    <div className="wg-weather-loading">
-      <div className="wg-weather-spinner" />
-    </div>
-  );
-
-  const currentTemp = Math.round(data.current.temperature_2m);
-  const high = Math.round(data.daily.temperature_2m_max[0]);
-  const low = Math.round(data.daily.temperature_2m_min[0]);
-  const code = data.current.weather_code;
-
-  // 简易 WMO 映射
-  const getWmo = (c: number) => {
-    if (c === 0 || c === 1) return { n: "晴朗", i: "☀️" };
-    if (c === 2 || c === 3) return { n: "多云", i: "☁️" };
-    if (c >= 51 && c <= 67) return { n: "雨天", i: "🌧️" };
-    if (c >= 71 && c <= 77) return { n: "雪天", i: "🌨️" };
-    if (c >= 80 && c <= 82) return { n: "阵雨", i: "🌦️" };
-    if (c >= 95) return { n: "雷雨", i: "⛈️" };
-    return { n: "阴天", i: "☁️" };
-  };
-  const wmo = getWmo(code);
-
-  return (
-    <div className="wg-weather">
-      <div className="wg-weather-top">
-        <span className="wg-weather-city">{city}</span>
-        <span className="wg-weather-icon">{wmo.i}</span>
-      </div>
-      <div className="wg-weather-main">
-        <span className="wg-weather-temp">{currentTemp}°</span>
-        <span className="wg-weather-desc">{wmo.n}</span>
-      </div>
-      <div className="wg-weather-bottom">
-        <span className="wg-weather-hl">H:{high}° L:{low}°</span>
-        <div className="wg-weather-bar">
-          <div className="wg-weather-dot" style={{ left: `${((currentTemp - low) / (high - low || 1)) * 100}%` }} />
+        .widget-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 14px 16px;
+            background: rgba(100, 185, 240, 0.45); 
+            backdrop-filter: blur(25px) saturate(140%);
+            -webkit-backdrop-filter: blur(25px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 6px 24px rgba(0, 0, 0, 0.12);
+            position: relative;
+            cursor: pointer;
+            color: #ffffff;
+            user-select: none;
+        }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 2; }
+        .location-box { display: flex; align-items: center; gap: 6px; }
+        .city-name { font-size: 16px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        .search-input {
+            background: rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 4px 10px;
+            color: #fff;
+            font-size: 11px;
+            width: 75px;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .search-input::placeholder { color: rgba(255, 255, 255, 0.75); }
+        .search-input:focus { background: rgba(255, 255, 255, 0.4); width: 95px; }
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        .spinning { animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .middle-content { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 2px; z-index: 2; }
+        .temp-display { display: flex; align-items: flex-start; }
+        .temp-number { font-size: 38px; font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.12); }
+        .temp-unit { font-size: 16px; font-weight: 600; margin-top: 2px; }
+        .weather-info { display: flex; flex-direction: column; margin-left: 10px; }
+        .weather-desc { font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.28); padding: 2px 8px; border-radius: 10px; }
+        .weather-details { font-size: 10px; opacity: 0.9; margin-top: 4px; }
+        .icon-container { position: relative; width: 55px; height: 55px; }
+        .cloud { position: absolute; font-size: 38px; left: 5px; top: 10px; animation: float 4s ease-in-out infinite; z-index: 2; }
+        .sun { position: absolute; font-size: 26px; right: 0px; top: -2px; animation: pulse 3s ease-in-out infinite; z-index: 1; }
+        @keyframes float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.02); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.1) rotate(15deg); } }
+        .bottom-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9px; opacity: 0.8; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 6px; z-index: 2; }
+        .status-dot { width: 5px; height: 5px; background-color: #52c41a; border-radius: 50%; display: inline-block; margin-right: 4px; box-shadow: 0 0 4px #52c41a; }
+        .updating-dot { background-color: #1890ff; animation: breath 1s alternate infinite; }
+        @keyframes breath { 0% { opacity: 0.4; } 100% { opacity: 1; } }
+      </style>
+      <div class="widget-container" id="widget-body">
+        <div class="top-bar">
+            <div class="location-box">
+                <span class="city-name" id="city-text">徐州</span>
+                <input class="search-input" id="city-input" type="text" placeholder="输入城市...">
+            </div>
+            <div class="refresh-btn" id="refresh-icon" title="立即刷新">🔄</div>
+        </div>
+        <div class="middle-content">
+            <div style="display: flex; align-items: center;">
+                <div class="temp-display">
+                    <span class="temp-number" id="temp-text">--</span>
+                    <span class="temp-unit">°C</span>
+                </div>
+                <div class="weather-info">
+                    <span class="weather-desc" id="desc-text">正在查询</span>
+                    <span class="weather-details" id="details-text">正在获取实时天气...</span>
+                </div>
+            </div>
+            <div class="icon-container">
+                <div class="sun" id="weather-sun">☀️</div>
+                <div class="cloud" id="weather-cloud">☁️</div>
+            </div>
+        </div>
+        <div class="bottom-bar">
+            <div>
+                <span class="status-dot" id="sync-dot"></span>
+                <span id="sync-status">GPS 自动同步</span>
+            </div>
+            <div id="update-time">上次更新: --</div>
         </div>
       </div>
-    </div>
-  );
+    `;
+
+    // 逻辑实现
+    let currentCity = "徐州";
+    const cityText = shadow.getElementById('city-text')!;
+    const cityInput = shadow.getElementById('city-input') as HTMLInputElement;
+    const tempText = shadow.getElementById('temp-text')!;
+    const descText = shadow.getElementById('desc-text')!;
+    const detailsText = shadow.getElementById('details-text')!;
+    const sunIcon = shadow.getElementById('weather-sun')!;
+    const cloudIcon = shadow.getElementById('weather-cloud')!;
+    const refreshIcon = shadow.getElementById('refresh-icon')!;
+    const syncDot = shadow.getElementById('sync-dot')!;
+    const updateTime = shadow.getElementById('update-time')!;
+    const widgetBody = shadow.getElementById('widget-body')!;
+
+    const parseWeatherCode = (code: number) => {
+      const map: any = {
+        0: { desc: "晴朗 ☀️", sun: "☀️", cloud: "✨" },
+        1: { desc: "晴间多云 🌤️", sun: "☀️", cloud: "☁️" },
+        2: { desc: "多云 ☁️", sun: "🌤️", cloud: "☁️" },
+        3: { desc: "阴天 ☁️", sun: "☁️", cloud: "☁️" },
+        95: { desc: "雷阵雨 ⛈️", sun: "⛈️", cloud: "⚡" }
+      };
+      return map[code] || { desc: "多云 ☁️", sun: "🌤️", cloud: "☁️" };
+    };
+
+    const fetchWeather = async () => {
+      refreshIcon.classList.add('spinning');
+      syncDot.classList.add('updating-dot');
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(currentCity)}&count=1&language=zh`);
+        const geoData = await geoRes.json();
+        if (geoData.results?.[0]) {
+          const loc = geoData.results[0];
+          const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`);
+          const wData = await wRes.json();
+          const cur = wData.current;
+          const style = parseWeatherCode(cur.weather_code);
+          
+          cityText.innerText = loc.name;
+          tempText.innerText = Math.round(cur.temperature_2m).toString();
+          descText.innerText = style.desc;
+          detailsText.innerText = `湿度: ${Math.round(cur.relative_humidity_2m)}%`;
+          sunIcon.innerText = style.sun;
+          cloudIcon.innerText = style.cloud;
+          
+          const now = new Date();
+          updateTime.innerText = `上次更新: ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+      } catch (e) {
+        descText.innerText = "网络异常";
+      } finally {
+        refreshIcon.classList.remove('spinning');
+        syncDot.classList.remove('updating-dot');
+      }
+    };
+
+    widgetBody.onclick = (e) => {
+      if (e.target === cityInput || refreshIcon.contains(e.target as Node)) return;
+      window.parent.postMessage({ type: "OS_CMD", action: "open_app", appId: "custom_app:app_lumen.weather_891909b94dd3" }, "*");
+    };
+
+    cityInput.onkeypress = (e) => {
+      if (e.key === 'Enter' && cityInput.value.trim()) {
+        currentCity = cityInput.value.trim();
+        fetchWeather();
+        cityInput.value = "";
+      }
+    };
+
+    refreshIcon.onclick = () => fetchWeather();
+
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 600000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
 
