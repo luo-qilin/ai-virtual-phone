@@ -7,6 +7,7 @@
 import { useState } from "react";
 import type { CharacterWorldGroup } from "@/lib/character-world-storage";
 import { DEFAULT_CHARACTER_WORLD_ID } from "@/lib/character-world-storage";
+import { loadCharacters } from "@/lib/character-storage";
 
 export function WorldTabStrip({
   groups,
