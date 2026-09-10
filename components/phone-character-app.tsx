@@ -1677,7 +1677,8 @@ function CharListView({
       )}
 
       {/* 转移世界 Modal */}
-            {activeMoveChar && (
+                {/* 转移世界 Modal */}
+      {activeMoveChar && (
         <div className="modal-overlay" data-ui="modal" onPointerDown={() => setActiveMoveChar(null)}>
           <div className="modal-dialog" data-ui="modal-dialog" onPointerDown={(e) => e.stopPropagation()} style={{ padding: 0, overflow: "hidden" }}>
             <div className="modal-header" data-ui="modal-header" style={{ padding: "20px 20px 10px" }}>
@@ -1733,6 +1734,9 @@ function CharListView({
           </div>
         </div>
       )}
+    </>
+  );
+}
 
 // ── Draggable 组件封装 ───────────────────────────────────
 
