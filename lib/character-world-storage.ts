@@ -113,8 +113,9 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
 
             if (relations.length !== (Array.isArray(group.relations) ? group.relations.length : 0)) changed = true;
 
-            return {
+                       return {
                 id: group.id,
+                parentId: typeof group.parentId === "string" && group.parentId ? group.parentId : undefined,
                 name: group.name.trim() || "未命名世界",
                 description: typeof group.description === "string" ? group.description.trim() : "",
                 memberIds: members,
@@ -130,6 +131,10 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
                 })) : [],
                 createdAt: group.createdAt || now,
                 updatedAt: group.updatedAt || now,
+                canvasX: group.canvasX,
+                canvasY: group.canvasY,
+                canvasRot: group.canvasRot,
+                canvasZIndex: group.canvasZIndex,
             };
         });
 
@@ -172,11 +177,12 @@ export function saveCharacterWorldGroups(groups: CharacterWorldGroup[]): void {
     dispatchUpdated();
 }
 
-export function createCharacterWorldGroup(name: string): CharacterWorldGroup {
+export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
     const groups = loadCharacterWorldGroups();
     const now = new Date().toISOString();
     const group: CharacterWorldGroup = {
         id: generateId("world"),
+        parentId,
         name: name.trim() || "新的世界",
         description: "",
         memberIds: [],
@@ -186,6 +192,10 @@ export function createCharacterWorldGroup(name: string): CharacterWorldGroup {
     };
     saveCharacterWorldGroups([...groups, group]);
     return group;
+}
+
+export function createCharacterWorldChild(parentId: string, name: string): CharacterWorldGroup {
+    return createCharacterWorldGroup(name, parentId);
 }
 
 export function renameCharacterWorldGroup(groupId: string, name: string): void {
