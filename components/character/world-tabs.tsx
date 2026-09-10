@@ -51,13 +51,9 @@ export function WorldTabStrip({
             role="tab"
             aria-selected={group.id === currentWorldId}
             className={`wt-tab ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
-            onClick={() => {
-              if (group.id === currentWorldId) {
-                // 点击已选中的父世界 -> 进入钻取
-                setDrillRootId(group.id);
-              } else {
-                onSelect(group.id);
-              }
+                       onClick={() => {
+              onSelect(group.id);
+              setDrillRootId(group.id);
             }}
           >
             <span className="wt-tab-name">{group.name}</span>
