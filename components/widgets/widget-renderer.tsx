@@ -1126,7 +1126,11 @@ function MusicWidget({
   }
 
   return (
-    <>
+    <      <style>{`
+        .wg-music-lyric { display:block; overflow:hidden; white-space:nowrap; max-width:100%; }
+        .wg-music-lyric-inner { display:inline-block; padding-left:100%; animation:wg-music-lyric-marquee 12s linear infinite; }
+        @keyframes wg-music-lyric-marquee { from { transform:translateX(0); } to { transform:translateX(-100%); } }
+      `}</style>>
       <div className="wg-music" onClick={() => player?.openFullPlayer()}>
         <div className="wg-music-disc" {...(isPlaying ? { "data-spinning": "" } : {})}>
           <div className="wg-music-disc-inner">
