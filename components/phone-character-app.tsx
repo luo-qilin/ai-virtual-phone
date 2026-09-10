@@ -1406,8 +1406,8 @@ function CharListView({
       )}
 
       {/* 世界卷宗编辑 */}
-      {showWorldEditor && currentGroup && (
-               <WorldCaseSheet
+           {showWorldEditor && currentGroup && (
+        <WorldCaseSheet
           group={currentGroup}
           onOpenSubChat={(sub) => {
             const ids = [...new Set(sub.memberIds || [])];
@@ -1439,6 +1439,7 @@ function CharListView({
           }}
           onClose={() => setShowWorldEditor(false)}
         />
+      )}
       
       {/* 新建卷宗 */}
       {showNewWorld && (
