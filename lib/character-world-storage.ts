@@ -120,8 +120,8 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
 
             if (relations.length !== (Array.isArray(group.relations) ? group.relations.length : 0)) changed = true;
 
-            return {
-             subGroups: Array.isArray(group.subGroups) ? group.subGroups : [],
+                       return {
+                subGroups: Array.isArray(group.subGroups) ? group.subGroups : [],
                 canvasX: group.canvasX,
                 canvasY: group.canvasY,
                 canvasRot: group.canvasRot,
