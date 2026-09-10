@@ -1140,15 +1140,20 @@ function MusicWidget({
           </div>
         </div>
         <div className="wg-music-info">
-          <span
+                   <span
             className="wg-music-title"
             onClick={!track ? handlePlaceholderClick : undefined}
             title={flowingText}
-            style={{ display: "block", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "100%" }}
+            style={{
+              display: "block",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+              minHeight: "1.2em",
+            }}
           >
-            <span style={{ display: "inline-block", paddingLeft: "100%", animation: "wg-music-lyric-marquee 12s linear infinite" }}>
-              {flowingText}
-            </span>
+            {flowingText}
           </span>
           <div className="wg-music-progress">
             <div className="wg-music-bar">
