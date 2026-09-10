@@ -1069,6 +1069,31 @@ function MusicWidget({
 }) {
   const player = useMusicPlayerOptional();
   const track = player?.currentTrack;
+    const parsedLyrics = (() => {
+    const lrc = track?.lyrics || "";
+    if (!lrc) return [] as { time: number; text: string }[];
+    const lines: { time: number; text: string }[] = [];
+    for (const line of lrc.split("\n")) {
+      const match = line.match(/\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
+      if (!match) continue;
+      const text = match[3].trim();
+      if (!text) continue;
+      lines.push({ time: parseInt(match[1], 10) * 60 + parseFloat(match[2]), text });
+    }
+    lines.sort((a, b) => a.time - b.time);
+    return lines;
+  })();
+  let lyricText = "";
+  if (parsedLyrics.length > 0) {
+    const ct = player?.currentTime ?? 0;
+    for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+      if (ct >= parsedLyrics[i].time) {
+        lyricText = parsedLyrics[i].text;
+        break;
+      }
+    }
+  }
+  const flowingText = lyricText || track?.title || placeholderTitle || "暂无歌词";
   const isPlaying = player?.isPlaying ?? false;
   const currentTime = player?.currentTime ?? 0;
   const duration = player?.duration ?? 0;
@@ -1101,7 +1126,11 @@ function MusicWidget({
   }
 
   return (
-    <>
+    <      <style>{`
+        .wg-music-lyric { display:block; overflow:hidden; white-space:nowrap; max-width:100%; }
+        .wg-music-lyric-inner { display:inline-block; padding-left:100%; animation:wg-music-lyric-marquee 12s linear infinite; }
+        @keyframes wg-music-lyric-marquee { from { transform:translateX(0); } to { transform:translateX(-100%); } }
+      `}</style>>
       <div className="wg-music" onClick={() => player?.openFullPlayer()}>
         <div className="wg-music-disc" {...(isPlaying ? { "data-spinning": "" } : {})}>
           <div className="wg-music-disc-inner">
@@ -1119,8 +1148,14 @@ function MusicWidget({
           </div>
         </div>
         <div className="wg-music-info">
-          <span className="wg-music-title" onClick={!track ? handlePlaceholderClick : undefined}>{track?.title ?? placeholderTitle}</span>
-          <span className="wg-music-artist" onClick={!track ? handlePlaceholderClick : undefined}>{track?.artist ?? placeholderArtist}</span>
+                   <span
+            className="wg-music-title wg-music-lyric"
+            onClick={!track ? handlePlaceholderClick : undefined}
+            title={flowingText}
+          >
+            <span className="wg-music-lyric-inner">{flowingText}</span>
+          </span>
+          ick : undefined}>{track?.artist ?? placeholderArtist}</span>
           <div className="wg-music-progress">
             <div className="wg-music-bar">
               <div className="wg-music-bar-fill" style={{ width: `${progress}%` }} />
