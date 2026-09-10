@@ -10,13 +10,6 @@ export const DEFAULT_CHARACTER_WORLD_ID = "world_default";
 
 registerKvMigration(CHARACTER_WORLDS_KEY);
 
-export type CharacterWorldRelation = {
-    id: string;
-    fromCharacterId: string;
-    toCharacterId: string;
-    label: string;
-};
-
 export type CharacterWorldSubGroup = {
     id: string;
     name: string;
@@ -25,6 +18,12 @@ export type CharacterWorldSubGroup = {
     chatBackgroundImage?: string;
     chatMutes?: string[];
     voiceConfigs?: Record<string, { voiceConfigId: string; speed?: number; pitch?: number }>;
+};
+export type CharacterWorldRelation = {
+    id: string;
+    fromCharacterId: string;
+    toCharacterId: string;
+    label: string;
 };
 
 export type CharacterWorldGroup = {
