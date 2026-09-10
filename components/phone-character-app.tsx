@@ -578,7 +578,7 @@ function CharListView({
       materializeSupportingCharacter(result, targetId, { allowAutoPost, placementIndex: index })
     );
     // materialize 直接写存储；这里回读刷新 React 态（onUpdateChars 会再存一次同数据，无害）
-    onUpdateChars(loadCharacters());
+  onUpdateChars([...characters, ...newChars]);
     setShowNpcGen(false);
     onNotice(`已生成配角：${newChars.map(c => `「${c.name}」`).join("")}`);
   }
