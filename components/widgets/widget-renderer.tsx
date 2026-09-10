@@ -192,7 +192,7 @@ function WeatherWidget() {
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
-            padding: 14px 16px;
+            padding: 14px 20px;
             background: rgba(100, 185, 240, 0.45); 
             backdrop-filter: blur(25px) saturate(140%);
             -webkit-backdrop-filter: blur(25px) saturate(140%);
@@ -205,52 +205,54 @@ function WeatherWidget() {
             user-select: none;
         }
         .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 2; }
-        .location-box { display: flex; align-items: center; gap: 6px; }
-        .city-name { font-size: 16px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        .location-box { display: flex; align-items: center; gap: 8px; }
+        .city-name { font-size: 18px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
         .search-input {
             background: rgba(255, 255, 255, 0.22);
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 20px;
-            padding: 4px 10px;
+            padding: 4px 12px;
             color: #fff;
-            font-size: 11px;
-            width: 75px;
+            font-size: 12px;
+            width: 100px;
             outline: none;
             transition: all 0.3s;
             text-align: center;
         }
         .search-input::placeholder { color: rgba(255, 255, 255, 0.75); }
-        .search-input:focus { background: rgba(255, 255, 255, 0.4); width: 95px; }
+        .search-input:focus { background: rgba(255, 255, 255, 0.4); width: 140px; }
         .refresh-btn {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: #fff;
-            width: 26px;
-            height: 26px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
-            font-size: 12px;
+            font-size: 14px;
         }
         .spinning { animation: spin 0.8s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .middle-content { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 2px; z-index: 2; }
+        /* 宽幅布局优化 */
+        .middle-content { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 4px; z-index: 2; }
+        .content-left { display: flex; align-items: center; gap: 20px; }
         .temp-display { display: flex; align-items: flex-start; }
-        .temp-number { font-size: 38px; font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.12); }
-        .temp-unit { font-size: 16px; font-weight: 600; margin-top: 2px; }
-        .weather-info { display: flex; flex-direction: column; margin-left: 10px; }
-        .weather-desc { font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.28); padding: 2px 8px; border-radius: 10px; }
-        .weather-details { font-size: 10px; opacity: 0.9; margin-top: 4px; }
-        .icon-container { position: relative; width: 55px; height: 55px; }
-        .cloud { position: absolute; font-size: 38px; left: 5px; top: 10px; animation: float 4s ease-in-out infinite; z-index: 2; }
-        .sun { position: absolute; font-size: 26px; right: 0px; top: -2px; animation: pulse 3s ease-in-out infinite; z-index: 1; }
+        .temp-number { font-size: 48px; font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.12); }
+        .temp-unit { font-size: 20px; font-weight: 600; margin-top: 4px; }
+        .weather-info { display: flex; flex-direction: column; }
+        .weather-desc { font-size: 14px; font-weight: 600; background: rgba(255,255,255,0.28); padding: 4px 12px; border-radius: 12px; width: fit-content; }
+        .weather-details { font-size: 12px; opacity: 0.9; margin-top: 6px; }
+        .icon-container { position: relative; width: 80px; height: 80px; }
+        .cloud { position: absolute; font-size: 56px; left: 0px; top: 10px; animation: float 4s ease-in-out infinite; z-index: 2; }
+        .sun { position: absolute; font-size: 40px; right: 0px; top: 0px; animation: pulse 3s ease-in-out infinite; z-index: 1; }
         @keyframes float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.02); } }
         @keyframes pulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.1) rotate(15deg); } }
-        .bottom-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 9px; opacity: 0.8; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 6px; z-index: 2; }
-        .status-dot { width: 5px; height: 5px; background-color: #52c41a; border-radius: 50%; display: inline-block; margin-right: 4px; box-shadow: 0 0 4px #52c41a; }
+        .bottom-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 11px; opacity: 0.8; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 8px; z-index: 2; }
+        .status-dot { width: 6px; height: 6px; background-color: #52c41a; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .updating-dot { background-color: #1890ff; animation: breath 1s alternate infinite; }
         @keyframes breath { 0% { opacity: 0.4; } 100% { opacity: 1; } }
       </style>
@@ -263,7 +265,7 @@ function WeatherWidget() {
             <div class="refresh-btn" id="refresh-icon" title="立即刷新">🔄</div>
         </div>
         <div class="middle-content">
-            <div style="display: flex; align-items: center;">
+            <div class="content-left">
                 <div class="temp-display">
                     <span class="temp-number" id="temp-text">--</span>
                     <span class="temp-unit">°C</span>

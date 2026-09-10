@@ -134,7 +134,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
   { type: "freestyleFrame88", name: "自由 · 音乐磁带", desc: "带专辑孔位的2x3框", size: "2x3", track: "freestyle" },
   { type: "freestyleFrame90", name: "自由 · 个人空间", desc: "多图可换的2x4资料卡", size: "2x4", track: "freestyle" },
   { type: "profileCard", name: "自由 · 主页名片", desc: "背景图+白卡+悬浮头像的资料名片", size: "4x4", track: "freestyle" },
-  { type: "weather", name: "晴空天气", desc: "实时气温、天气状况与精美图标", size: "2x2" },
+  { type: "weather", name: "晴空天气", desc: "实时气温、天气状况与精美图标", size: "2x4" },
 ];
 
 export const GRID_ROWS = 6;
