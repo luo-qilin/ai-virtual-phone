@@ -1069,31 +1069,6 @@ function MusicWidget({
 }) {
   const player = useMusicPlayerOptional();
   const track = player?.currentTrack;
-    const parsedLyrics = (() => {
-    const lrc = track?.lyrics || "";
-    if (!lrc) return [] as { time: number; text: string }[];
-    const lines: { time: number; text: string }[] = [];
-    for (const line of lrc.split("\n")) {
-      const match = line.match(/\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
-      if (!match) continue;
-      const text = match[3].trim();
-      if (!text) continue;
-      lines.push({ time: parseInt(match[1], 10) * 60 + parseFloat(match[2]), text });
-    }
-    lines.sort((a, b) => a.time - b.time);
-    return lines;
-  })();
-  let lyricText = "";
-  if (parsedLyrics.length > 0) {
-    const ct = player?.currentTime ?? 0;
-    for (let i = parsedLyrics.length - 1; i >= 0; i--) {
-      if (ct >= parsedLyrics[i].time) {
-        lyricText = parsedLyrics[i].text;
-        break;
-      }
-    }
-  }
-  const flowingText = lyricText || track?.title || placeholderTitle || "暂无歌词";
   const isPlaying = player?.isPlaying ?? false;
   const currentTime = player?.currentTime ?? 0;
   const duration = player?.duration ?? 0;
@@ -1101,15 +1076,36 @@ function MusicWidget({
 
   const customTitle = typeof config?.placeholderTitle === "string" ? config.placeholderTitle : "";
   const customArtist = typeof config?.placeholderArtist === "string" ? config.placeholderArtist : "";
-  const placeholderTitle = customTitle || "\u6682\u65E0\u64AD\u653E";
-  const placeholderArtist = customArtist || "\u70B9\u51FB\u64AD\u653E\u97F3\u4E50";
+  const placeholderTitle = customTitle || "暂无播放";
+  const placeholderArtist = customArtist || "点击播放音乐";
 
   const [showEdit, setShowEdit] = useState(false);
   const [editTitle, setEditTitle] = useState(customTitle);
   const [editArtist, setEditArtist] = useState(customArtist);
 
+  const parsedLyrics: { time: number; text: string }[] = [];
+  const lrc = track?.lyrics || "";
+  if (lrc) {
+    for (const line of lrc.split("\n")) {
+      const match = line.match(/\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
+      if (!match) continue;
+      const text = match[3].trim();
+      if (!text) continue;
+      parsedLyrics.push({ time: parseInt(match[1], 10) * 60 + parseFloat(match[2]), text });
+    }
+    parsedLyrics.sort((a, b) => a.time - b.time);
+  }
+  let lyricText = "";
+  for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+    if (currentTime >= parsedLyrics[i].time) {
+      lyricText = parsedLyrics[i].text;
+      break;
+    }
+  }
+  const flowingText = lyricText || track?.title || placeholderTitle;
+
   function handlePlaceholderClick(e: React.MouseEvent) {
-    if (track) return; // has real track, don't edit
+    if (track) return;
     e.stopPropagation();
     setEditTitle(customTitle);
     setEditArtist(customArtist);
@@ -1126,11 +1122,7 @@ function MusicWidget({
   }
 
   return (
-    <      <style>{`
-        .wg-music-lyric { display:block; overflow:hidden; white-space:nowrap; max-width:100%; }
-        .wg-music-lyric-inner { display:inline-block; padding-left:100%; animation:wg-music-lyric-marquee 12s linear infinite; }
-        @keyframes wg-music-lyric-marquee { from { transform:translateX(0); } to { transform:translateX(-100%); } }
-      `}</style>>
+    <>
       <div className="wg-music" onClick={() => player?.openFullPlayer()}>
         <div className="wg-music-disc" {...(isPlaying ? { "data-spinning": "" } : {})}>
           <div className="wg-music-disc-inner">
@@ -1148,14 +1140,16 @@ function MusicWidget({
           </div>
         </div>
         <div className="wg-music-info">
-                   <span
-            className="wg-music-title wg-music-lyric"
+          <span
+            className="wg-music-title"
             onClick={!track ? handlePlaceholderClick : undefined}
             title={flowingText}
+            style={{ display: "block", overflow: "hidden", whiteSpace: "nowrap", maxWidth: "100%" }}
           >
-            <span className="wg-music-lyric-inner">{flowingText}</span>
+            <span style={{ display: "inline-block", paddingLeft: "100%", animation: "wg-music-lyric-marquee 12s linear infinite" }}>
+              {flowingText}
+            </span>
           </span>
-          ick : undefined}>{track?.artist ?? placeholderArtist}</span>
           <div className="wg-music-progress">
             <div className="wg-music-bar">
               <div className="wg-music-bar-fill" style={{ width: `${progress}%` }} />
@@ -1184,24 +1178,24 @@ function MusicWidget({
       </div>
       {showEdit && createPortal(
         <ContentDialog
-          title={"\u7F16\u8F91\u663E\u793A\u6587\u5B57"}
+          title="编辑显示文字"
           onConfirm={handleSave}
           onCancel={() => setShowEdit(false)}
         >
-          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>{"\u6807\u9898"}</label>
+          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>标题</label>
           <input
             className="ui-input"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            placeholder={"\u6682\u65E0\u64AD\u653E"}
+            placeholder="暂无播放"
             style={{ width: "100%", marginBottom: 12 }}
           />
-          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>{"\u526F\u6807\u9898"}</label>
+          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>副标题</label>
           <input
             className="ui-input"
             value={editArtist}
             onChange={(e) => setEditArtist(e.target.value)}
-            placeholder={"\u70B9\u51FB\u64AD\u653E\u97F3\u4E50"}
+            placeholder="点击播放音乐"
             style={{ width: "100%" }}
           />
         </ContentDialog>,
