@@ -192,23 +192,7 @@ export function saveCharacterWorldGroups(groups: CharacterWorldGroup[]): void {
     dispatchUpdated();
 }
 
-export function createCharacterWorldChild(parentId: string, name: string): CharacterWorldGroup {
-    const groups = loadCharacterWorldGroups();
-    const parent = groups.find(g => g.id === parentId && !g.parentId);
-    const now = new Date().toISOString();
-    const group: CharacterWorldGroup = {
-        id: generateId("world"),
-        name: name.trim() || "子卷宗",
-        description: "",
-        memberIds: [],
-        relations: [],
-        parentId: parent ? parentId : null,
-        createdAt: now,
-        updatedAt: now,
-    };
-    saveCharacterWorldGroups([...groups, group]);
-    return group;
-}
+
 export function createCharacterWorldSubGroup(groupId: string, name: string): CharacterWorldSubGroup {
     const groups = loadCharacterWorldGroups();
     const group = groups.find(g => g.id === groupId);
