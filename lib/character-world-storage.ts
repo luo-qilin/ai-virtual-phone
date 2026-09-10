@@ -17,6 +17,16 @@ export type CharacterWorldRelation = {
     label: string;
 };
 
+export type CharacterWorldSubGroup = {
+    id: string;
+    name: string;
+    personaPrompt: string;
+    memberIds: string[];
+    chatBackgroundImage?: string;
+    chatMutes?: string[];
+    voiceConfigs?: Record<string, { voiceConfigId: string; speed?: number; pitch?: number }>;
+};
+
 export type CharacterWorldGroup = {
     id: string;
     parentId?: string; // 父级卷宗 ID
@@ -24,6 +34,7 @@ export type CharacterWorldGroup = {
     description: string;
     memberIds: string[];
     relations: CharacterWorldRelation[];
+    subGroups?: CharacterWorldSubGroup[];
     parentId?: string | null;
     createdAt: string;
     updatedAt: string;
@@ -111,6 +122,11 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
             if (relations.length !== (Array.isArray(group.relations) ? group.relations.length : 0)) changed = true;
 
             return {
+             subGroups: Array.isArray(group.subGroups) ? group.subGroups : [],
+                canvasX: group.canvasX,
+                canvasY: group.canvasY,
+                canvasRot: group.canvasRot,
+                canvasZIndex: group.canvasZIndex,
                 id: group.id,
                 name: group.name.trim() || "未命名世界",
                 description: typeof group.description === "string" ? group.description.trim() : "",
