@@ -21,7 +21,6 @@ import { generateSupportingCharacters, materializeSupportingCharacter, type Gene
 import {
   addCharacterWorldRelation,
   createCharacterWorldGroup,
-  createCharacterWorldChild,
   deleteCharacterWorldGroup,
   deleteCharacterWorldRelation,
   getCharacterWorldGroupId,
@@ -228,9 +227,22 @@ export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps)
     setView({ type: "list", id: null, isEditing: false });
   }
 
+  const [activeSubWorld, setActiveSubWorld] = useState<CharacterWorldSubGroup | null>(null);
+
   return (
     <>
       <div className="char-app">
+        {activeSubWorld && (
+            <SubWorldChatPanel 
+                groupId={safeWorldId}
+                subWorld={activeSubWorld}
+                onBack={() => {
+                    setActiveSubWorld(null);
+                    // 退出聊天后刷新卷宗配置
+                    setWorldGroups(loadCharacterWorldGroups());
+                }}
+            />
+        )}
         {view.type === "list" && (
           <CharListView
             characters={characters}
@@ -453,6 +465,7 @@ function CharListView({
   onPlacementDone,
   onClearPendingPlacement,
   onNotice,
+  onOpenSubChat,
 }: {
   characters: Character[];
   bgItems: CanvasBgItem[];
@@ -469,29 +482,20 @@ function CharListView({
   onPlacementDone: (char: Character) => void;
   onClearPendingPlacement: () => void;
   onNotice: (text: string) => void;
+  onOpenSubChat?: (sub: CharacterWorldSubGroup) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [showNpcGen, setShowNpcGen] = useState(false);
   const [activeMoveChar, setActiveMoveChar] = useState<Character | null>(null);
 
   // ── 世界卷宗：当前世界派生数据 ──
-   const [browseParentId, setBrowseParentId] = useState<string | null>(null);
   const currentGroup = worldGroups.find(g => g.id === currentWorldId)
     ?? worldGroups.find(g => g.id === DEFAULT_CHARACTER_WORLD_ID)
     ?? worldGroups[0];
   const memberSet = new Set(currentGroup?.memberIds ?? []);
   const worldCharacters = characters.filter(c => memberSet.has(c.id));
-  // 核心：当前卷宗画布也包含“子卷宗”节点
-  const worldSubGroups = worldGroups.filter(g => g.parentId === currentWorldId);
   const worldBgItems = (bgItems || []).filter(item => (item.worldId ?? DEFAULT_CHARACTER_WORLD_ID) === currentWorldId);
   const memberCounts = new Map(worldGroups.map(g => [g.id, g.memberIds.length]));
-    const rootGroups = worldGroups.filter(g => !g.parentId);
-  const stripGroups = browseParentId
-    ? [
-        worldGroups.find(g => g.id === browseParentId),
-        ...worldGroups.filter(g => g.parentId === browseParentId),
-      ].filter((g): g is CharacterWorldGroup => Boolean(g))
-    : rootGroups;
   const nameById = new Map(characters.map(c => [c.id, c.name || "未命名"]));
   // 连线与世界观关系同步：同一对角色的多条关系合并为一条线
   const relationLines: CanvasRelationLine[] = (() => {
@@ -509,21 +513,9 @@ function CharListView({
     return [...pairs.values()];
   })();
 
-  const subGroupIds = new Set(worldSubGroups.map(g => g.id));
-  const charIds = new Set(worldCharacters.map(c => c.id));
-
-  const getPosById = (id: string) => {
-    const char = worldCharacters.find(c => c.id === id);
-    if (char && char.canvasX !== undefined) return { x: char.canvasX + 60, y: (char.canvasY || 0) + 60 };
-    const sg = worldSubGroups.find(g => g.id === id);
-    if (sg && sg.canvasX !== undefined) return { x: sg.canvasX + 50, y: (sg.canvasY || 0) + 40 };
-    return null;
-  };
-
   // ── 世界卷宗：弹层与交互状态 ──
   const [showWorldEditor, setShowWorldEditor] = useState(false);
-  const [showNewWorld, setShowNewWorld] = useState<{ parentId?: string } | null>(null);
- 
+  const [showNewWorld, setShowNewWorld] = useState(false);
   const [dropTargetWorldId, setDropTargetWorldId] = useState<string | null>(null);
   // 拉线：编辑模式下点照片A→照片B
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
@@ -1054,10 +1046,7 @@ function CharListView({
         leftAction={
           <button
             className="flex items-center justify-center w-[34px] h-[34px] rounded-full bg-black/5 text-[#666] hover:bg-black/10 transition-colors"
-              onClick={() => {
-              if (browseParentId) setBrowseParentId(null);
-              else onClose();
-            }}
+            onClick={onClose}
             aria-label="返回桌面"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1122,28 +1111,14 @@ function CharListView({
         }
       >
       {/* 世界卷宗标签条：每个世界一份案卷、一张画布 */}
-               <WorldTabStrip
-        groups={stripGroups}
+      <WorldTabStrip
+        groups={worldGroups}
         currentWorldId={currentWorldId}
         memberCounts={memberCounts}
         dropTargetWorldId={dropTargetWorldId}
-        parentId={browseParentId}
-        onExitDrill={() => setBrowseParentId(null)}
-        onSelect={(id) => {
-          const g = worldGroups.find(x => x.id === id);
-          if (!g) return;
-          if (!browseParentId && !g.parentId) {
-            setBrowseParentId(g.id);
-            selectWorld(g.id);
-            return;
-          }
-          selectWorld(id);
-        }}
+        onSelect={selectWorld}
         onOpenEditor={() => setShowWorldEditor(true)}
-        onOpenCreate={(parentId) => {
-          if (parentId) setBrowseParentId(parentId);
-          setShowNewWorld(true);
-        }}
+        onOpenCreate={() => setShowNewWorld(true)}
       />
       <div
         ref={canvasElRef}
@@ -1193,41 +1168,6 @@ function CharListView({
                 {renderBgContent(item)}
               </DraggableNode>
             ))}
-
-            {/* 子卷宗节点：显示为档案袋 */}
-            {worldSubGroups.map((sg, idx) => {
-              const x = sg.canvasX ?? (100 + idx * 120);
-              const y = sg.canvasY ?? 100;
-              return (
-                <DraggableNode
-                  key={sg.id} id={sg.id}
-                  x={x} y={y} rot={sg.canvasRot || 0} zIndex={sg.canvasZIndex || 90}
-                  onDragEnd={(id, nx, ny) => {
-                    import("@/lib/character-world-storage").then(m => m.updateSubGroupCanvasPos(id, nx, ny));
-                    setWorldGroups(prev => prev.map(g => g.id === sg.id ? { ...g, canvasX: nx, canvasY: ny } : g));
-                  }}
-                  onClick={isEditing ? undefined : () => selectWorld(sg.id)}
-                  className={`char-world-node ${linkFromId === sg.id ? "wt-link-source" : ""}`}
-                  isEditing={isEditing}
-                  onEditTap={handleCharEditTap}
-                  use2dTransform
-                  trashBinRef={trashBinRef}
-                  onDragActiveChange={setIsAnyDragging}
-                  onOverTrashChange={setOverTrashBin}
-                  zoom={pan.zoom}
-                  pinchRef={pinchRef}
-                >
-                  <div className="char-world-folder">
-                    <div className="char-world-folder-tab" />
-                    <div className="char-world-folder-body">
-                      <div className="char-world-folder-label">SUB-CASE</div>
-                      <div className="char-world-folder-name">{sg.name}</div>
-                      <div className="char-world-folder-meta">{sg.memberIds.length} CHARS</div>
-                    </div>
-                  </div>
-                </DraggableNode>
-              );
-            })}
 
             {worldCharacters.map((char, idx) => {
               if (char.canvasX === undefined) return null;
@@ -1288,11 +1228,11 @@ function CharListView({
             {/* 把拉线放在所有卡片的最后渲染，并设置超高 zIndex，使其盖在所有照片之上 */}
             <svg className="absolute top-0 left-0 w-[10000px] h-[10000px] pointer-events-none overflow-visible" style={{ zIndex: 99999 }}>
               {relationLines.map(line => {
-                const p1 = getPosById(line.aId);
-                const p2 = getPosById(line.bId);
-                if (!p1 || !p2) return null;
-                const { x: x1, y: y1 } = p1;
-                const { x: x2, y: y2 } = p2;
+                const a = worldCharacters.find(c => c.id === line.aId);
+                const b = worldCharacters.find(c => c.id === line.bId);
+                if (!a || !b || a.canvasX === undefined || a.canvasY === undefined || b.canvasX === undefined || b.canvasY === undefined) return null;
+                const x1 = a.canvasX + 60, y1 = a.canvasY + 60;
+                const x2 = b.canvasX + 60, y2 = b.canvasY + 60;
                 return (
                   <g key={line.key}>
                     {/* 连线阴影 (更淡的阴影) */}
@@ -1469,33 +1409,24 @@ function CharListView({
           group={currentGroup}
           onRename={name => renameCharacterWorldGroup(currentGroup.id, name)}
           onUpdateDescription={description => updateCharacterWorldDescription(currentGroup.id, description)}
-          onAddSub={() => {
-            setShowWorldEditor(false);
-            setShowNewWorld({ parentId: currentGroup.id });
-          }}
           onDelete={() => {
-            const parentId = currentGroup.parentId || DEFAULT_CHARACTER_WORLD_ID;
             deleteCharacterWorldGroup(currentGroup.id);
             setShowWorldEditor(false);
-            selectWorld(parentId);
-            onNotice(currentGroup.parentId ? "卷宗已删除，角色并回父级卷宗" : "卷宗已删除，角色并回默认世界");
+            selectWorld(DEFAULT_CHARACTER_WORLD_ID);
+            onNotice("卷宗已删除，角色并回默认世界");
           }}
           onClose={() => setShowWorldEditor(false)}
+          onOpenSubChat={(sub) => {
+              setShowWorldEditor(false);
+              setActiveSubWorld(sub);
+          }}
         />
       )}
 
-           {/* 新建卷宗 */}
+      {/* 新建卷宗 */}
       {showNewWorld && (
         <NewWorldSheet
-          parentName={browseParentId ? worldGroups.find(g => g.id === browseParentId)?.name : undefined}
           onCreate={name => {
-            if (browseParentId) {
-              const group = createCharacterWorldChild(browseParentId, name);
-              setShowNewWorld(false);
-              selectWorld(group.id);
-              onNotice(`已在本卷宗下建立子卷宗「${group.name}」`);
-              return;
-            }
             const group = createCharacterWorldGroup(name);
             setShowNewWorld(false);
             selectWorld(group.id);
@@ -1678,59 +1609,33 @@ function CharListView({
       )}
 
       {/* 转移世界 Modal */}
-                {/* 转移世界 Modal */}
       {activeMoveChar && (
         <div className="modal-overlay" data-ui="modal" onPointerDown={() => setActiveMoveChar(null)}>
-          <div className="modal-dialog" data-ui="modal-dialog" onPointerDown={(e) => e.stopPropagation()} style={{ padding: 0, overflow: "hidden" }}>
-            <div className="modal-header" data-ui="modal-header" style={{ padding: "20px 20px 10px" }}>
-              <h3 className="modal-title" style={{ margin: 0, fontSize: "16px" }}>
-                {activeMoveChar.name || "未命名"} · 转移 / 复制
-              </h3>
+          <div className="modal-dialog" data-ui="modal-dialog" onPointerDown={(e) => e.stopPropagation()} style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="modal-header" data-ui="modal-header" style={{ padding: '20px 20px 10px' }}>
+              <h3 className="modal-title" style={{ margin: 0, fontSize: '16px' }}>转移到其他卷宗</h3>
             </div>
-            <div role="listbox" style={{ maxHeight: "40dvh", padding: "10px 16px", overflowY: "auto" }}>
+            <div role="listbox" style={{ maxHeight: '40dvh', padding: '10px 16px', overflowY: 'auto' }}>
               {worldGroups.filter(g => g.id !== currentWorldId).map(group => (
-                <div key={group.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{group.name}{group.parentId ? "（子）" : ""}</div>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn-outline"
-                    style={{ padding: "6px 10px", fontSize: 12 }}
-                    onClick={() => {
-                      moveCharacterToWorld(activeMoveChar.id, group.id);
-                      setActiveMoveChar(null);
-                      onNotice(`已转移到「${group.name}」`);
-                    }}
-                  >
-                    转移
-                  </button>
-                  <button
-                    type="button"
-                    className="ui-btn"
-                    style={{ padding: "6px 10px", fontSize: 12 }}
-                    onClick={() => {
-                      const { id: _id, createdAt: _c, updatedAt: _u, wechatID: _w, ...rest } = activeMoveChar;
-                      const copy = createCharacter({
-                        ...rest,
-                        name: activeMoveChar.name,
-                        canvasX: (activeMoveChar.canvasX ?? 80) + 24,
-                        canvasY: (activeMoveChar.canvasY ?? 80) + 24,
-                      });
-                      onUpdateChars([...characters, copy]);
-                      moveCharacterToWorld(copy.id, group.id);
-                      setActiveMoveChar(null);
-                      onNotice(`已复制到「${group.name}」`);
-                    }}
-                  >
-                    复制
-                  </button>
-                </div>
+                <button
+                  key={group.id}
+                  type="button"
+                  style={{ width: '100%', padding: '12px 16px', textAlign: 'left', borderRadius: '8px', background: 'rgba(0,0,0,0.03)', marginBottom: '8px', border: '1px solid rgba(0,0,0,0.05)', fontWeight: '500', fontSize: '14px', color: '#333' }}
+                  onClick={() => {
+                    moveCharacterToWorld(activeMoveChar.id, group.id);
+                    setActiveMoveChar(null);
+                  }}
+                  role="option"
+                >
+                  {group.name}
+                </button>
               ))}
               {worldGroups.filter(g => g.id !== currentWorldId).length === 0 && (
-                <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>没有其他卷宗</div>
+                <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>没有其他卷宗可供转移</div>
               )}
             </div>
-            <div className="modal-footer" data-ui="modal-footer" style={{ padding: "10px 20px 20px" }}>
-              <button className="ui-btn ui-btn-outline" style={{ width: "100%" }} onClick={() => setActiveMoveChar(null)}>取消</button>
+            <div className="modal-footer" data-ui="modal-footer" style={{ padding: '10px 20px 20px' }}>
+              <button className="ui-btn ui-btn-outline" style={{ width: '100%' }} onClick={() => setActiveMoveChar(null)}>取消</button>
             </div>
           </div>
         </div>
