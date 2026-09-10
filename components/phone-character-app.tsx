@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
+import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import {
   createCharacter,
   exportCharacterAsJson,
@@ -1406,12 +1407,27 @@ function CharListView({
 
       {/* 世界卷宗编辑 */}
       {showWorldEditor && currentGroup && (
-        <WorldCaseSheet
+               <WorldCaseSheet
           group={currentGroup}
-                    onOpenSubChat={(sub) => {
-            setActiveSubWorld(sub);
+          onOpenSubChat={(sub) => {
+            const ids = [...new Set(sub.memberIds || [])];
+            if (ids.length === 0) {
+              onNotice("先点「配置」给这个子卷宗绑角色");
+              return;
+            }
+            const name = (sub.name || "子卷宗群聊").trim();
+            const sessions = loadChatSessions();
+            const same = (a: string[], b: string[]) =>
+              a.length === b.length && [...a].sort().join() === [...b].sort().join();
+            const existing = sessions.find(s =>
+              s.isGroup && s.groupName === name && same(s.participantIds || [], ids)
+            );
+            const session = existing ?? createGroupSession(name, ids);
             setShowWorldEditor(false);
-            onNotice(`已选子卷宗「${sub.name}」。群聊入口还没接通，关系请在本卷宗画布上拉线。`);
+            onNotice(`已进入群聊「${name}」`);
+            window.dispatchEvent(new CustomEvent("open-app", {
+              detail: { appId: "chat", sessionId: session.id },
+            }));
           }}
           onRename={name => renameCharacterWorldGroup(currentGroup.id, name)}
           onUpdateDescription={description => updateCharacterWorldDescription(currentGroup.id, description)}
@@ -1422,13 +1438,8 @@ function CharListView({
             onNotice("卷宗已删除，角色并回默认世界");
           }}
           onClose={() => setShowWorldEditor(false)}
-          onOpenSubChat={(sub) => {
-              setShowWorldEditor(false);
-              setActiveSubWorld(sub);
-          }}
         />
-      )}
-
+      
       {/* 新建卷宗 */}
       {showNewWorld && (
         <NewWorldSheet
