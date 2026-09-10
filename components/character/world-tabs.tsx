@@ -17,6 +17,7 @@ export function WorldTabStrip({
   onSelect,
   onOpenEditor,
   onOpenCreate,
+  onExitDrill,
 }: {
   groups: CharacterWorldGroup[];
   currentWorldId: string;
@@ -26,8 +27,16 @@ export function WorldTabStrip({
   onSelect: (worldId: string) => void;
   onOpenEditor: () => void;
   onOpenCreate: (parentId?: string) => void;
+  onExitDrill?: () => void;
 }) {
   const [drillRootId, setDrillRootId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDrillRootId(parentId ?? null);
+  }, [parentId]);
+
+  useEffect(() => {
+    if (drillRootId) {
 
   // 如果当前选中的 ID 已经不在 drillRoot 的名下了，强制重置 drillRoot
   useEffect(() => {
@@ -79,12 +88,10 @@ export function WorldTabStrip({
         role="tab"
         aria-selected={currentWorldId === rootId}
         className={`wt-tab wt-tab-drill-root ${currentWorldId === rootId ? "wt-tab-active" : ""}`}
-        onClick={() => {
-          if (currentWorldId === rootId) {
-            setDrillRootId(null); // 退回父级列表
-          } else {
-            onSelect(rootId!);
-          }
+               onClick={() => {
+          onSelect(rootId!);
+          setDrillRootId(null);
+          onExitDrill?.();
         }}
       >
         <span className="wt-tab-drill-icon">📂</span>
