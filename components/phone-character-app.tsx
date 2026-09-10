@@ -1122,12 +1122,13 @@ function CharListView({
         }
       >
       {/* 世界卷宗标签条：每个世界一份案卷、一张画布 */}
-           <WorldTabStrip
+               <WorldTabStrip
         groups={stripGroups}
         currentWorldId={currentWorldId}
         memberCounts={memberCounts}
         dropTargetWorldId={dropTargetWorldId}
         parentId={browseParentId}
+        onExitDrill={() => setBrowseParentId(null)}
         onSelect={(id) => {
           const g = worldGroups.find(x => x.id === id);
           if (!g) return;
@@ -1139,7 +1140,7 @@ function CharListView({
           selectWorld(id);
         }}
         onOpenEditor={() => setShowWorldEditor(true)}
-               onOpenCreate={(parentId) => {
+        onOpenCreate={(parentId) => {
           if (parentId) setBrowseParentId(parentId);
           setShowNewWorld(true);
         }}
