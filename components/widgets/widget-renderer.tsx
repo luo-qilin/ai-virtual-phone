@@ -166,90 +166,207 @@ function WidgetContent({
    Weather — 晴空天气小组件 (2x2)
    ══════════════════════════════════════════ */
 function WeatherWidget() {
-  const [data, setData] = useState<any>(null);
-  const [city, setCity] = useState("定位中...");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    async function fetchWeather() {
-      try {
-        // 1. 尝试从 APP 私有数据库读取上次保存的城市
-        const STORAGE_KEY = "lumen_weather_last_city_v1";
-        // 注意：小组件在宿主环境运行，无法直接用 AiPhone.db 读 APP 私有数据，
-        // 但我们可以直接访问 kvGet (IndexedDB) 里的数据，或者使用默认坐标。
-        // 这里为了组件独立性，优先执行一次极速 IP 定位。
-        const ipUrl = "https://whois.pconline.com.cn/ipJson.jsp?json=true";
-        const ipRes = await fetch(ipUrl);
-        const ipData = ipRes.ok ? await ipRes.json() : null;
-        const cityName = ipData?.region || ipData?.city || "北京市";
-        if (cancelled) return;
-        setCity(cityName);
+    const container = containerRef.current;
+    if (!container) return;
 
-        // 2. 获取经纬度 (北京默认)
-        let lat = 39.90, lng = 116.40;
-        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=zh`;
-        const geoRes = await fetch(geoUrl);
-        const geoData = geoRes.ok ? await geoRes.json() : null;
-        if (geoData?.results?.[0]) {
-          lat = geoData.results[0].latitude;
-          lng = geoData.results[0].longitude;
+    // 创建 Shadow DOM 以隔离样式
+    const shadow = container.attachShadow({ mode: 'open' });
+
+    // 注入小卷设计的 HTML 和 CSS
+    shadow.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
-
-        // 3. 获取天气
-        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
-        const wRes = await fetch(weatherUrl);
-        const wData = wRes.ok ? await wRes.json() : null;
-        if (!cancelled) setData(wData);
-      } catch (e) {
-        console.error("Weather widget fetch failed", e);
-      }
-    }
-    fetchWeather();
-    const timer = setInterval(fetchWeather, 30 * 60 * 1000); // 30分钟刷一次
-    return () => { cancelled = true; clearInterval(timer); };
-  }, []);
-
-  if (!data) return (
-    <div className="wg-weather-loading">
-      <div className="wg-weather-spinner" />
-    </div>
-  );
-
-  const currentTemp = Math.round(data.current.temperature_2m);
-  const high = Math.round(data.daily.temperature_2m_max[0]);
-  const low = Math.round(data.daily.temperature_2m_min[0]);
-  const code = data.current.weather_code;
-
-  // 简易 WMO 映射
-  const getWmo = (c: number) => {
-    if (c === 0 || c === 1) return { n: "晴朗", i: "☀️" };
-    if (c === 2 || c === 3) return { n: "多云", i: "☁️" };
-    if (c >= 51 && c <= 67) return { n: "雨天", i: "🌧️" };
-    if (c >= 71 && c <= 77) return { n: "雪天", i: "🌨️" };
-    if (c >= 80 && c <= 82) return { n: "阵雨", i: "🌦️" };
-    if (c >= 95) return { n: "雷雨", i: "⛈️" };
-    return { n: "阴天", i: "☁️" };
-  };
-  const wmo = getWmo(code);
-
-  return (
-    <div className="wg-weather">
-      <div className="wg-weather-top">
-        <span className="wg-weather-city">{city}</span>
-        <span className="wg-weather-icon">{wmo.i}</span>
-      </div>
-      <div className="wg-weather-main">
-        <span className="wg-weather-temp">{currentTemp}°</span>
-        <span className="wg-weather-desc">{wmo.n}</span>
-      </div>
-      <div className="wg-weather-bottom">
-        <span className="wg-weather-hl">H:{high}° L:{low}°</span>
-        <div className="wg-weather-bar">
-          <div className="wg-weather-dot" style={{ left: `${((currentTemp - low) / (high - low || 1)) * 100}%` }} />
+        .widget-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 14px 20px;
+            background: rgba(100, 185, 240, 0.45); 
+            backdrop-filter: blur(25px) saturate(140%);
+            -webkit-backdrop-filter: blur(25px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4), 0 6px 24px rgba(0, 0, 0, 0.12);
+            position: relative;
+            cursor: pointer;
+            color: #ffffff;
+            user-select: none;
+        }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; z-index: 2; }
+        .location-box { display: flex; align-items: center; gap: 8px; }
+        .city-name { font-size: 18px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+        .search-input {
+            background: rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            color: #fff;
+            font-size: 12px;
+            width: 100px;
+            outline: none;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .search-input::placeholder { color: rgba(255, 255, 255, 0.75); }
+        .search-input:focus { background: rgba(255, 255, 255, 0.4); width: 140px; }
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .spinning { animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* 宽幅布局优化 */
+        .middle-content { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 4px; z-index: 2; }
+        .content-left { display: flex; align-items: center; gap: 20px; }
+        .temp-display { display: flex; align-items: flex-start; }
+        .temp-number { font-size: 48px; font-weight: 800; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.12); }
+        .temp-unit { font-size: 20px; font-weight: 600; margin-top: 4px; }
+        .weather-info { display: flex; flex-direction: column; }
+        .weather-desc { font-size: 14px; font-weight: 600; background: rgba(255,255,255,0.28); padding: 4px 12px; border-radius: 12px; width: fit-content; }
+        .weather-details { font-size: 12px; opacity: 0.9; margin-top: 6px; }
+        .icon-container { position: relative; width: 80px; height: 80px; }
+        .cloud { position: absolute; font-size: 56px; left: 0px; top: 10px; animation: float 4s ease-in-out infinite; z-index: 2; }
+        .sun { position: absolute; font-size: 40px; right: 0px; top: 0px; animation: pulse 3s ease-in-out infinite; z-index: 1; }
+        @keyframes float { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.02); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.1) rotate(15deg); } }
+        .bottom-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 11px; opacity: 0.8; border-top: 1px solid rgba(255, 255, 255, 0.18); padding-top: 8px; z-index: 2; }
+        .status-dot { width: 6px; height: 6px; background-color: #52c41a; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .updating-dot { background-color: #1890ff; animation: breath 1s alternate infinite; }
+        @keyframes breath { 0% { opacity: 0.4; } 100% { opacity: 1; } }
+      </style>
+      <div class="widget-container" id="widget-body">
+        <div class="top-bar">
+            <div class="location-box">
+                <span class="city-name" id="city-text">徐州</span>
+                <input class="search-input" id="city-input" type="text" placeholder="输入城市...">
+            </div>
+            <div class="refresh-btn" id="refresh-icon" title="立即刷新">🔄</div>
+        </div>
+        <div class="middle-content">
+            <div class="content-left">
+                <div class="temp-display">
+                    <span class="temp-number" id="temp-text">--</span>
+                    <span class="temp-unit">°C</span>
+                </div>
+                <div class="weather-info">
+                    <span class="weather-desc" id="desc-text">正在查询</span>
+                    <span class="weather-details" id="details-text">正在获取实时天气...</span>
+                </div>
+            </div>
+            <div class="icon-container">
+                <div class="sun" id="weather-sun">☀️</div>
+                <div class="cloud" id="weather-cloud">☁️</div>
+            </div>
+        </div>
+        <div class="bottom-bar">
+            <div>
+                <span class="status-dot" id="sync-dot"></span>
+                <span id="sync-status">GPS 自动同步</span>
+            </div>
+            <div id="update-time">上次更新: --</div>
         </div>
       </div>
-    </div>
-  );
+    `;
+
+    // 逻辑实现
+    let currentCity = "徐州";
+    const cityText = shadow.getElementById('city-text')!;
+    const cityInput = shadow.getElementById('city-input') as HTMLInputElement;
+    const tempText = shadow.getElementById('temp-text')!;
+    const descText = shadow.getElementById('desc-text')!;
+    const detailsText = shadow.getElementById('details-text')!;
+    const sunIcon = shadow.getElementById('weather-sun')!;
+    const cloudIcon = shadow.getElementById('weather-cloud')!;
+    const refreshIcon = shadow.getElementById('refresh-icon')!;
+    const syncDot = shadow.getElementById('sync-dot')!;
+    const updateTime = shadow.getElementById('update-time')!;
+    const widgetBody = shadow.getElementById('widget-body')!;
+
+    const parseWeatherCode = (code: number) => {
+      const map: any = {
+        0: { desc: "晴朗 ☀️", sun: "☀️", cloud: "✨" },
+        1: { desc: "晴间多云 🌤️", sun: "☀️", cloud: "☁️" },
+        2: { desc: "多云 ☁️", sun: "🌤️", cloud: "☁️" },
+        3: { desc: "阴天 ☁️", sun: "☁️", cloud: "☁️" },
+        95: { desc: "雷阵雨 ⛈️", sun: "⛈️", cloud: "⚡" }
+      };
+      return map[code] || { desc: "多云 ☁️", sun: "🌤️", cloud: "☁️" };
+    };
+
+    const fetchWeather = async () => {
+      refreshIcon.classList.add('spinning');
+      syncDot.classList.add('updating-dot');
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(currentCity)}&count=1&language=zh`);
+        const geoData = await geoRes.json();
+        if (geoData.results?.[0]) {
+          const loc = geoData.results[0];
+          const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto`);
+          const wData = await wRes.json();
+          const cur = wData.current;
+          const style = parseWeatherCode(cur.weather_code);
+          
+          cityText.innerText = loc.name;
+          tempText.innerText = Math.round(cur.temperature_2m).toString();
+          descText.innerText = style.desc;
+          detailsText.innerText = `湿度: ${Math.round(cur.relative_humidity_2m)}%`;
+          sunIcon.innerText = style.sun;
+          cloudIcon.innerText = style.cloud;
+          
+          const now = new Date();
+          updateTime.innerText = `上次更新: ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+      } catch (e) {
+        descText.innerText = "网络异常";
+      } finally {
+        refreshIcon.classList.remove('spinning');
+        syncDot.classList.remove('updating-dot');
+      }
+    };
+
+    widgetBody.onclick = (e) => {
+      if (e.target === cityInput || refreshIcon.contains(e.target as Node)) return;
+      window.parent.postMessage({ type: "OS_CMD", action: "open_app", appId: "custom_app:app_lumen.weather_891909b94dd3" }, "*");
+    };
+
+    cityInput.onkeypress = (e) => {
+      if (e.key === 'Enter' && cityInput.value.trim()) {
+        currentCity = cityInput.value.trim();
+        fetchWeather();
+        cityInput.value = "";
+      }
+    };
+
+    refreshIcon.onclick = () => fetchWeather();
+
+    fetchWeather();
+    const interval = setInterval(fetchWeather, 600000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
 
@@ -1069,31 +1186,6 @@ function MusicWidget({
 }) {
   const player = useMusicPlayerOptional();
   const track = player?.currentTrack;
-    const parsedLyrics = (() => {
-    const lrc = track?.lyrics || "";
-    if (!lrc) return [] as { time: number; text: string }[];
-    const lines: { time: number; text: string }[] = [];
-    for (const line of lrc.split("\n")) {
-      const match = line.match(/\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
-      if (!match) continue;
-      const text = match[3].trim();
-      if (!text) continue;
-      lines.push({ time: parseInt(match[1], 10) * 60 + parseFloat(match[2]), text });
-    }
-    lines.sort((a, b) => a.time - b.time);
-    return lines;
-  })();
-  let lyricText = "";
-  if (parsedLyrics.length > 0) {
-    const ct = player?.currentTime ?? 0;
-    for (let i = parsedLyrics.length - 1; i >= 0; i--) {
-      if (ct >= parsedLyrics[i].time) {
-        lyricText = parsedLyrics[i].text;
-        break;
-      }
-    }
-  }
-  const flowingText = lyricText || track?.title || placeholderTitle || "暂无歌词";
   const isPlaying = player?.isPlaying ?? false;
   const currentTime = player?.currentTime ?? 0;
   const duration = player?.duration ?? 0;
@@ -1101,15 +1193,36 @@ function MusicWidget({
 
   const customTitle = typeof config?.placeholderTitle === "string" ? config.placeholderTitle : "";
   const customArtist = typeof config?.placeholderArtist === "string" ? config.placeholderArtist : "";
-  const placeholderTitle = customTitle || "\u6682\u65E0\u64AD\u653E";
-  const placeholderArtist = customArtist || "\u70B9\u51FB\u64AD\u653E\u97F3\u4E50";
+  const placeholderTitle = customTitle || "暂无播放";
+  const placeholderArtist = customArtist || "点击播放音乐";
 
   const [showEdit, setShowEdit] = useState(false);
   const [editTitle, setEditTitle] = useState(customTitle);
   const [editArtist, setEditArtist] = useState(customArtist);
 
+  const parsedLyrics: { time: number; text: string }[] = [];
+  const lrc = track?.lyrics || "";
+  if (lrc) {
+    for (const line of lrc.split("\n")) {
+      const match = line.match(/\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
+      if (!match) continue;
+      const text = match[3].trim();
+      if (!text) continue;
+      parsedLyrics.push({ time: parseInt(match[1], 10) * 60 + parseFloat(match[2]), text });
+    }
+    parsedLyrics.sort((a, b) => a.time - b.time);
+  }
+  let lyricText = "";
+  for (let i = parsedLyrics.length - 1; i >= 0; i--) {
+    if (currentTime >= parsedLyrics[i].time) {
+      lyricText = parsedLyrics[i].text;
+      break;
+    }
+  }
+  const flowingText = lyricText || track?.title || placeholderTitle;
+
   function handlePlaceholderClick(e: React.MouseEvent) {
-    if (track) return; // has real track, don't edit
+    if (track) return;
     e.stopPropagation();
     setEditTitle(customTitle);
     setEditArtist(customArtist);
@@ -1126,11 +1239,7 @@ function MusicWidget({
   }
 
   return (
-    <      <style>{`
-        .wg-music-lyric { display:block; overflow:hidden; white-space:nowrap; max-width:100%; }
-        .wg-music-lyric-inner { display:inline-block; padding-left:100%; animation:wg-music-lyric-marquee 12s linear infinite; }
-        @keyframes wg-music-lyric-marquee { from { transform:translateX(0); } to { transform:translateX(-100%); } }
-      `}</style>>
+    <>
       <div className="wg-music" onClick={() => player?.openFullPlayer()}>
         <div className="wg-music-disc" {...(isPlaying ? { "data-spinning": "" } : {})}>
           <div className="wg-music-disc-inner">
@@ -1149,13 +1258,20 @@ function MusicWidget({
         </div>
         <div className="wg-music-info">
                    <span
-            className="wg-music-title wg-music-lyric"
+            className="wg-music-title"
             onClick={!track ? handlePlaceholderClick : undefined}
             title={flowingText}
+            style={{
+              display: "block",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+              minHeight: "1.2em",
+            }}
           >
-            <span className="wg-music-lyric-inner">{flowingText}</span>
+            {flowingText}
           </span>
-          ick : undefined}>{track?.artist ?? placeholderArtist}</span>
           <div className="wg-music-progress">
             <div className="wg-music-bar">
               <div className="wg-music-bar-fill" style={{ width: `${progress}%` }} />
@@ -1184,24 +1300,24 @@ function MusicWidget({
       </div>
       {showEdit && createPortal(
         <ContentDialog
-          title={"\u7F16\u8F91\u663E\u793A\u6587\u5B57"}
+          title="编辑显示文字"
           onConfirm={handleSave}
           onCancel={() => setShowEdit(false)}
         >
-          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>{"\u6807\u9898"}</label>
+          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>标题</label>
           <input
             className="ui-input"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            placeholder={"\u6682\u65E0\u64AD\u653E"}
+            placeholder="暂无播放"
             style={{ width: "100%", marginBottom: 12 }}
           />
-          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>{"\u526F\u6807\u9898"}</label>
+          <label style={{ fontSize: "calc(13px*var(--app-text-scale,1))", color: "var(--c-text)", marginBottom: 4, display: "block" }}>副标题</label>
           <input
             className="ui-input"
             value={editArtist}
             onChange={(e) => setEditArtist(e.target.value)}
-            placeholder={"\u70B9\u51FB\u64AD\u653E\u97F3\u4E50"}
+            placeholder="点击播放音乐"
             style={{ width: "100%" }}
           />
         </ContentDialog>,

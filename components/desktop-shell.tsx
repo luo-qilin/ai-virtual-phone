@@ -1127,7 +1127,7 @@ export function DesktopShell({ initialThemeProfile, initialThemeAssets }: Deskto
     const onIframeMessage = (e: MessageEvent) => {
       if (e.data?.type === "OS_CMD") {
         if (e.data.action === "open_app" && typeof e.data.appId === "string") {
-          setActiveApp(e.data.appId as DesktopIconId);
+          openApp(e.data.appId as DesktopIconId);
         } else if (e.data.action === "show_notice" && typeof e.data.message === "string") {
           setNotice(e.data.message);
         } else if (e.data.action === "simulate_call" && typeof e.data.charName === "string") {

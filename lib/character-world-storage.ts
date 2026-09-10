@@ -26,9 +26,18 @@ export type CharacterWorldRelation = {
     label: string;
 };
 
+export type CharacterWorldSubGroup = {
+    id: string;
+    name: string;
+    personaPrompt: string;
+    memberIds: string[];
+    chatBackgroundImage?: string;
+    chatMutes?: string[]; // 被屏蔽不参与发言的角色 ID 列表
+    voiceConfigs?: Record<string, { voiceConfigId: string; speed?: number; pitch?: number }>; // 角色 ID -> 自定义音色配置
+};
+
 export type CharacterWorldGroup = {
     id: string;
-    parentId?: string; // 父级卷宗 ID
     name: string;
     description: string;
     memberIds: string[];
@@ -37,10 +46,6 @@ export type CharacterWorldGroup = {
     parentId?: string | null;
     createdAt: string;
     updatedAt: string;
-    canvasX?: number;
-    canvasY?: number;
-    canvasRot?: number;
-    canvasZIndex?: number;
 };
 
 function isBrowser(): boolean {
@@ -99,8 +104,6 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
             }
 
             const memberSet = new Set(members);
-            // 这里放宽校验：允许关系连接到该卷宗内的子卷宗 ID
-            const subGroupIds = new Set(groups.filter(g => g.parentId === group.id).map(g => g.id));
             const relations = (Array.isArray(group.relations) ? group.relations : [])
                 .filter(relation => (
                     relation
@@ -109,8 +112,8 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
                     && typeof relation.toCharacterId === "string"
                     && typeof relation.label === "string"
                     && relation.label.trim()
-                    && (memberSet.has(relation.fromCharacterId) || subGroupIds.has(relation.fromCharacterId))
-                    && (memberSet.has(relation.toCharacterId) || subGroupIds.has(relation.toCharacterId))
+                    && memberSet.has(relation.fromCharacterId)
+                    && memberSet.has(relation.toCharacterId)
                     && relation.fromCharacterId !== relation.toCharacterId
                 ))
                 .map(relation => ({
@@ -127,13 +130,26 @@ function normalizeGroups(groups: CharacterWorldGroup[], characters: Character[])
                 canvasRot: group.canvasRot,
                 canvasZIndex: group.canvasZIndex,
                 id: group.id,
+                parentId: typeof group.parentId === "string" && group.parentId ? group.parentId : undefined,
                 name: group.name.trim() || "未命名世界",
                 description: typeof group.description === "string" ? group.description.trim() : "",
                 memberIds: members,
                 relations,
-                parentId: typeof group.parentId === "string" && group.parentId ? group.parentId : null,
+                subGroups: Array.isArray(group.subGroups) ? group.subGroups.map((sub: any) => ({
+                    id: sub.id || generateId("subworld"),
+                    name: (sub.name || "未命名子卷宗").trim(),
+                    personaPrompt: sub.personaPrompt || "",
+                    memberIds: Array.isArray(sub.memberIds) ? sub.memberIds.filter((id: any) => memberSet.has(id)) : [],
+                    chatBackgroundImage: sub.chatBackgroundImage || "",
+                    chatMutes: Array.isArray(sub.chatMutes) ? sub.chatMutes : [],
+                    voiceConfigs: sub.voiceConfigs || {},
+                })) : [],
                 createdAt: group.createdAt || now,
                 updatedAt: group.updatedAt || now,
+                canvasX: group.canvasX,
+                canvasY: group.canvasY,
+                canvasRot: group.canvasRot,
+                canvasZIndex: group.canvasZIndex,
             };
         });
 
@@ -230,21 +246,24 @@ export function deleteCharacterWorldSubGroup(groupId: string, subId: string): vo
 }
 
 export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
-    if (parentId) return createCharacterWorldChild(parentId, name);
     const groups = loadCharacterWorldGroups();
     const now = new Date().toISOString();
     const group: CharacterWorldGroup = {
         id: generateId("world"),
+        parentId,
         name: name.trim() || "新的世界",
         description: "",
         memberIds: [],
         relations: [],
-        parentId: null,
         createdAt: now,
         updatedAt: now,
     };
     saveCharacterWorldGroups([...groups, group]);
     return group;
+}
+
+export function createCharacterWorldChild(parentId: string, name: string): CharacterWorldGroup {
+    return createCharacterWorldGroup(name, parentId);
 }
 
 export function renameCharacterWorldGroup(groupId: string, name: string): void {
@@ -271,57 +290,30 @@ export function deleteCharacterWorldGroup(groupId: string): void {
     const target = groups.find(group => group.id === groupId);
     if (!target) return;
     const now = new Date().toISOString();
-
-    if (!target.parentId) {
-        const alsoDelete = groups.filter(g => g.parentId === groupId);
-        const moved = [...target.memberIds, ...alsoDelete.flatMap(g => g.memberIds)];
-        const removeIds = new Set([groupId, ...alsoDelete.map(g => g.id)]);
-        saveCharacterWorldGroups(groups
-            .filter(g => !removeIds.has(g.id))
-            .map(g => g.id === DEFAULT_CHARACTER_WORLD_ID
-                ? { ...g, memberIds: Array.from(new Set([...g.memberIds, ...moved])), updatedAt: now }
-                : g
-            ));
-        return;
-    }
-
-    const parentId = target.parentId;
     saveCharacterWorldGroups(groups
-        .filter(g => g.id !== groupId)
-        .map(g => g.id === parentId
-            ? { ...g, memberIds: Array.from(new Set([...g.memberIds, ...target.memberIds])), updatedAt: now }
-            : g
+        .filter(group => group.id !== groupId)
+        .map(group => group.id === DEFAULT_CHARACTER_WORLD_ID
+            ? { ...group, memberIds: [...group.memberIds, ...target.memberIds], updatedAt: now }
+            : group
         ));
 }
 
 export function moveCharacterToWorld(characterId: string, groupId: string): void {
     const now = new Date().toISOString();
-    const allGroups = loadCharacterWorldGroups();
-    saveCharacterWorldGroups(allGroups.map(group => {
+    saveCharacterWorldGroups(loadCharacterWorldGroups().map(group => {
         const nextMemberIds = group.memberIds.filter(id => id !== characterId);
         const receivesMember = group.id === groupId;
         const memberIds = receivesMember ? [...nextMemberIds, characterId] : nextMemberIds;
         const memberSet = new Set(memberIds);
-        const subGroupIds = new Set(allGroups.filter(g => g.parentId === group.id).map(g => g.id));
         return {
             ...group,
             memberIds,
             relations: group.relations.filter(relation =>
-                (memberSet.has(relation.fromCharacterId) || subGroupIds.has(relation.fromCharacterId)) && 
-                (memberSet.has(relation.toCharacterId) || subGroupIds.has(relation.toCharacterId))
+                memberSet.has(relation.fromCharacterId) && memberSet.has(relation.toCharacterId)
             ),
             updatedAt: receivesMember || nextMemberIds.length !== group.memberIds.length ? now : group.updatedAt,
         };
     }));
-}
-
-export function updateSubGroupCanvasPos(subGroupId: string, x: number, y: number): void {
-    const now = new Date().toISOString();
-    saveCharacterWorldGroups(loadCharacterWorldGroups().map(group =>
-        group.id === subGroupId
-            ? { ...group, canvasX: x, canvasY: y, updatedAt: now }
-            : group
-    ));
 }
 
 export function addCharacterWorldRelation(groupId: string, fromCharacterId: string, toCharacterId: string, label: string): void {
@@ -425,6 +417,42 @@ export function getVisibleMomentLikesForCharacter(post: MomentPost, viewerCharac
         if (post.authorType === "character") return areCharactersInSameWorld(viewerCharacterId, post.authorId);
         return true;
     });
+}
+
+export function createCharacterWorldSubGroup(groupId: string, name: string): CharacterWorldSubGroup {
+    const groups = loadCharacterWorldGroups();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) throw new Error("Parent world not found");
+    const sub: CharacterWorldSubGroup = {
+        id: generateId("subworld"),
+        name: name.trim() || "未命名子卷宗",
+        personaPrompt: "",
+        memberIds: [],
+        chatBackgroundImage: "",
+        chatMutes: [],
+        voiceConfigs: {},
+    };
+    group.subGroups = [...(group.subGroups || []), sub];
+    saveCharacterWorldGroups(groups);
+    return sub;
+}
+
+export function updateCharacterWorldSubGroup(groupId: string, subId: string, updates: Partial<CharacterWorldSubGroup>): void {
+    const groups = loadCharacterWorldGroups();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    group.subGroups = (group.subGroups || []).map(sub =>
+        sub.id === subId ? { ...sub, ...updates } : sub
+    );
+    saveCharacterWorldGroups(groups);
+}
+
+export function deleteCharacterWorldSubGroup(groupId: string, subId: string): void {
+    const groups = loadCharacterWorldGroups();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+    group.subGroups = (group.subGroups || []).filter(sub => sub.id !== subId);
+    saveCharacterWorldGroups(groups);
 }
 
 export function formatCharacterRelationsForPrompt(characterId: string): string {
