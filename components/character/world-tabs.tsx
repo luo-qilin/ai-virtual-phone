@@ -37,10 +37,6 @@ export function WorldTabStrip({
 
   useEffect(() => {
     if (drillRootId) {
-
-  // 如果当前选中的 ID 已经不在 drillRoot 的名下了，强制重置 drillRoot
-  useEffect(() => {
-    if (drillRootId) {
       const active = groups.find(g => g.id === currentWorldId);
       if (active && active.id !== drillRootId && active.parentId !== drillRootId) {
         setDrillRootId(null);
@@ -48,8 +44,7 @@ export function WorldTabStrip({
     }
   }, [currentWorldId, drillRootId, groups]);
 
-  // 顶级列表：只显示没有 parentId 的父世界
-    if (!parentId && !drillRootId) {
+  if (!parentId && !drillRootId) {
     const parentGroups = groups.filter(g => !g.parentId);
     return (
       <div className="wt-strip" role="tablist">
@@ -60,7 +55,7 @@ export function WorldTabStrip({
             role="tab"
             aria-selected={group.id === currentWorldId}
             className={`wt-tab ${group.id === currentWorldId ? "wt-tab-active" : ""}`}
-                       onClick={() => {
+            onClick={() => {
               onSelect(group.id);
               setDrillRootId(group.id);
             }}
@@ -75,20 +70,18 @@ export function WorldTabStrip({
     );
   }
 
-  // 钻取模式：显示该父级和它的子级
-   const rootId = parentId || drillRootId;
+  const rootId = parentId || drillRootId;
   const currentParent = groups.find(g => g.id === rootId);
   const subGroups = groups.filter(g => g.parentId === rootId);
 
   return (
     <div className="wt-strip" role="tablist">
-      {/* 父级 Tab：再次点击它退出钻取 */}
       <button
         type="button"
         role="tab"
         aria-selected={currentWorldId === rootId}
         className={`wt-tab wt-tab-drill-root ${currentWorldId === rootId ? "wt-tab-active" : ""}`}
-               onClick={() => {
+        onClick={() => {
           onSelect(rootId!);
           setDrillRootId(null);
           onExitDrill?.();
