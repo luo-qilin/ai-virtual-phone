@@ -6,6 +6,10 @@ import { SettingsContext } from "../phone-settings-app";
 import { loadUserIdentities, saveUserIdentities } from "@/lib/settings-storage";
 import { Input } from "@/components/ui/form";
 import { ConfirmDialog } from "@/components/ui/modal";
+import { loadCharacters, saveCharacters } from "@/lib/character-storage";
+import { loadCharacterWorldGroups, moveCharacterToWorld } from "@/lib/character-world-storage";
+import { DEFAULT_CHARACTER_WORLD_ID } from "@/lib/character-world-storage";
+import type { Character } from "@/lib/character-types";
 
 export type UserIdentity = {
     id: string;
@@ -16,6 +20,8 @@ export type UserIdentity = {
     age: string;
     occupation: string;
     customSettings: string;
+    importToArchives?: boolean;
+    archivesWorldId?: string;
 };
 
 const DEFAULT_IDENTITIES: UserIdentity[] = [
@@ -115,7 +121,31 @@ export function UserIdentitySettings() {
     const updateIdentity = (id: string, updates: Partial<UserIdentity>) => {
         setIdentities(identities.map(i => i.id === id ? { ...i, ...updates } : i));
     };
-
+    function syncIdentityToArchives(identity: UserIdentity) {
+        const chars = loadCharacters();
+        const proxyId = `userproxy_${identity.id}`;
+        const existing = chars.find(c => c.id === proxyId || c.sourceIdentityId === identity.id);
+        if (!identity.importToArchives) {
+            if (existing) saveCharacters(chars.filter(c => c.id !== existing.id));
+            return;
+        }
+        const worldId = identity.archivesWorldId || DEFAULT_CHARACTER_WORLD_ID;
+        const persona = [identity.bio, identity.customSettings, identity.occupation && `职业：${identity.occupation}`, identity.gender && `性别：${identity.gender}`, identity.age && `年龄：${identity.age}`].filter(Boolean).join("\n");
+        const nextCard: Character = existing
+            ? { ...existing, name: identity.name || "我", avatar: identity.avatarUrl || null, persona, isUserProxy: true, sourceIdentityId: identity.id, updatedAt: new Date().toISOString() }
+            : {
+                id: proxyId,
+                name: identity.name || "我",
+                avatar: identity.avatarUrl || null,
+                persona,
+                isUserProxy: true,
+                sourceIdentityId: identity.id,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+        saveCharacters(existing ? chars.map(c => c.id === existing.id ? nextCard : c) : [nextCard, ...chars]);
+        moveCharacterToWorld(nextCard.id, worldId);
+    }
     const removeIdentity = (id: string) => {
         const next = identities.filter(i => i.id !== id);
         setIdentities(next);
@@ -334,7 +364,35 @@ export function UserIdentitySettings() {
                                                 rows={4}
                                                 className="ui-textarea"
                                             />
-                                        </div>
+                                                                             </div>
+
+                                        <label className="flex items-center gap-2 ts-13">
+                                            <input
+                                                type="checkbox"
+                                                checked={identity.importToArchives === true}
+                                                onChange={(e) => {
+                                                    const next = { ...identity, importToArchives: e.target.checked, archivesWorldId: identity.archivesWorldId || DEFAULT_CHARACTER_WORLD_ID };
+                                                    updateIdentity(identity.id, next);
+                                                    syncIdentityToArchives(next);
+                                                }}
+                                            />
+                                            导入 Target Archives
+                                        </label>
+                                        {identity.importToArchives && (
+                                            <select
+                                                value={identity.archivesWorldId || DEFAULT_CHARACTER_WORLD_ID}
+                                                onChange={(e) => {
+                                                    const next = { ...identity, archivesWorldId: e.target.value };
+                                                    updateIdentity(identity.id, next);
+                                                    syncIdentityToArchives(next);
+                                                }}
+                                            >
+                                                {loadCharacterWorldGroups().filter(g => !g.parentId).map(g => (
+                                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <p className="menu-desc">导入后出现在该卷宗画布上，可拉关系线。这是你本人，不能聊天、不会被 AI 扮演。</p>
                                     </>
                                 )
                             })()}
