@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
 import { createGroupSession, loadChatSessions, saveChatSessions, pushChatMessage } from "@/lib/chat-storage";
+import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import {
   createCharacter,
   exportCharacterAsJson,
@@ -1409,7 +1410,7 @@ function CharListView({
            {showWorldEditor && currentGroup && (
         <WorldCaseSheet
           group={currentGroup}
-                   onOpenSubChat={(sub) => {
+          onOpenSubChat={(sub) => {
             const ids = [...new Set(sub.memberIds || [])];
             if (ids.length === 0) {
               onNotice("先点「配置」给这个子卷宗绑角色");

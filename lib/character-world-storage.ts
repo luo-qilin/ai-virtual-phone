@@ -192,58 +192,6 @@ export function saveCharacterWorldGroups(groups: CharacterWorldGroup[]): void {
     dispatchUpdated();
 }
 
-export function createCharacterWorldChild(parentId: string, name: string): CharacterWorldGroup {
-    const groups = loadCharacterWorldGroups();
-    const parent = groups.find(g => g.id === parentId && !g.parentId);
-    const now = new Date().toISOString();
-    const group: CharacterWorldGroup = {
-        id: generateId("world"),
-        name: name.trim() || "子卷宗",
-        description: "",
-        memberIds: [],
-        relations: [],
-        parentId: parent ? parentId : null,
-        createdAt: now,
-        updatedAt: now,
-    };
-    saveCharacterWorldGroups([...groups, group]);
-    return group;
-}
-export function createCharacterWorldSubGroup(groupId: string, name: string): CharacterWorldSubGroup {
-    const groups = loadCharacterWorldGroups();
-    const group = groups.find(g => g.id === groupId);
-    if (!group) throw new Error("Parent world not found");
-    const sub: CharacterWorldSubGroup = {
-        id: generateId("subworld"),
-        name: name.trim() || "未命名子卷宗",
-        personaPrompt: "",
-        memberIds: [],
-        chatBackgroundImage: "",
-        chatMutes: [],
-        voiceConfigs: {},
-    };
-    group.subGroups = [...(group.subGroups || []), sub];
-    saveCharacterWorldGroups(groups);
-    return sub;
-}
-
-export function updateCharacterWorldSubGroup(groupId: string, subId: string, updates: Partial<CharacterWorldSubGroup>): void {
-    const groups = loadCharacterWorldGroups();
-    const group = groups.find(g => g.id === groupId);
-    if (!group) return;
-    group.subGroups = (group.subGroups || []).map(sub =>
-        sub.id === subId ? { ...sub, ...updates } : sub
-    );
-    saveCharacterWorldGroups(groups);
-}
-
-export function deleteCharacterWorldSubGroup(groupId: string, subId: string): void {
-    const groups = loadCharacterWorldGroups();
-    const group = groups.find(g => g.id === groupId);
-    if (!group) return;
-    group.subGroups = (group.subGroups || []).filter(sub => sub.id !== subId);
-    saveCharacterWorldGroups(groups);
-}
 
 export function createCharacterWorldGroup(name: string, parentId?: string): CharacterWorldGroup {
     const groups = loadCharacterWorldGroups();
