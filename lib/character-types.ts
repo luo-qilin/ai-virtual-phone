@@ -18,6 +18,8 @@ export type Character = {
   canvasRot?: number;
   canvasZIndex?: number;
   polaroidStyle?: number; // 用户选择的拍立得样式索引
+  isUserProxy?: boolean;
+  sourceIdentityId?: string;
 };
 
 export type CanvasBgItem = {
