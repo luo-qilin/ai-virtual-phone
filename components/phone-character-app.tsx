@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
+import { createGroupSession, loadChatSessions, saveChatSessions, pushChatMessage } from "@/lib/chat-storage";
 import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import {
   createCharacter,
@@ -1416,13 +1417,39 @@ function CharListView({
               return;
             }
             const name = (sub.name || "子卷宗群聊").trim();
+            const contactId = `group_sub_${sub.id}`;
             const sessions = loadChatSessions();
             const same = (a: string[], b: string[]) =>
               a.length === b.length && [...a].sort().join() === [...b].sort().join();
-            const existing = sessions.find(s =>
-              s.isGroup && s.groupName === name && same(s.participantIds || [], ids)
+            let session = sessions.find(s =>
+              s.isGroup && (s.contactId === contactId || (s.groupName === name && same(s.participantIds || [], ids)))
             );
-            const session = existing ?? createGroupSession(name, ids);
+            const prevIds = session?.participantIds || [];
+            const added = ids.filter(id => !prevIds.includes(id));
+            if (!session) {
+              session = createGroupSession(name, ids);
+            }
+            saveChatSessions(loadChatSessions().map(s =>
+              s.id === session!.id
+                ? {
+                    ...s,
+                    contactId,
+                    groupName: name,
+                    participantIds: ids,
+                    isGroup: true,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : s
+            ));
+            const chars = loadCharacters();
+            const inviteIds = added.length > 0 ? added : ids;
+            const names = inviteIds.map(id => chars.find(c => c.id === id)?.name?.trim() || "未知角色");
+            pushChatMessage({
+              sessionId: session.id,
+              role: "assistant",
+              content: `你邀请${names.join("、")}进入群聊`,
+              mediaType: "group_admin_notice",
+            });
             setShowWorldEditor(false);
             onNotice(`已进入群聊「${name}」`);
             window.dispatchEvent(new CustomEvent("open-app", {
