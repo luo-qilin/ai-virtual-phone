@@ -199,7 +199,11 @@ export function PhoneCharacterApp({ onClose, onNotice }: PhoneCharacterAppProps)
   }
 
   // Handle clicking a polaroid
-  function handleSelectChar(char: Character, e: React.MouseEvent<HTMLDivElement>) {
+   function handleSelectChar(char: Character, e: React.MouseEvent<HTMLDivElement>) {
+    if (char.isUserProxy) {
+      onNotice("这是你的身份，不能聊天、不会被 AI 扮演");
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
 
     setTransition({
