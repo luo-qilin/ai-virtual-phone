@@ -3,7 +3,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
 import { createGroupSession, loadChatSessions, saveChatSessions, pushChatMessage } from "@/lib/chat-storage";
-import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import {
   createCharacter,
   exportCharacterAsJson,
