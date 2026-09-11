@@ -1,8 +1,8 @@
 "use client";
 
-import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Character } from "@/lib/character-types";
+import { createGroupSession, loadChatSessions } from "@/lib/chat-storage";
 import {
   createCharacter,
   exportCharacterAsJson,
@@ -1406,8 +1406,8 @@ function CharListView({
       )}
 
       {/* 世界卷宗编辑 */}
-      {showWorldEditor && currentGroup && (
-               <WorldCaseSheet
+           {showWorldEditor && currentGroup && (
+        <WorldCaseSheet
           group={currentGroup}
           onOpenSubChat={(sub) => {
             const ids = [...new Set(sub.memberIds || [])];
@@ -1440,7 +1440,7 @@ function CharListView({
           onClose={() => setShowWorldEditor(false)}
         />
       )}
-
+      
       {/* 新建卷宗 */}
       {showNewWorld && (
         <NewWorldSheet
