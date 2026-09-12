@@ -6276,6 +6276,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onToggleEmojiPanel={() => { setShowEmojiPanel(!showEmojiPanel); setShowStickerPanel(false); setShowPlusMenu(false); }}
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
+					onInviteOfflineParty={handleInviteOfflineParty}
                 />
             ) : (
             <ChatTextInputBar
