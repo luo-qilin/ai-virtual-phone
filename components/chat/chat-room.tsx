@@ -1,5 +1,6 @@
 "use client";
 
+import { createOfflinePartySession, listOfflineInviteCandidates } from "@/lib/offline-party";
 import { forwardRef, Fragment, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChatSession, ChatMessage, CHAT_APP_SETTINGS_UPDATED_EVENT, CHAT_INITIAL_VISIBLE_MESSAGE_COUNT, CHAT_LOAD_MORE_MESSAGE_COUNT, CHAT_REQUEST_REPLY_EVENT, loadChatAppSettings, loadChatMessages, loadChatContacts, loadChatSessions, saveChatSessions, pushChatMessage, updateChatMessage, deleteChatMessage, deleteChatMessagesFrom, deleteChatMessagesByIds, retractChatMessage, editChatMessage, updateMessageMediaData, replaceResponseBatchWithParts, replaceGroupResponseRound, isReadingDiscussMessage, isSystemInstructionMessage, createResponseBatchId, createResponseRoundId, getLatestStateValues, getLatestCharacterStateValues, compareChatMessages, isSessionStreamingEnabled } from "@/lib/chat-storage";
 import { cleanStreamText, splitStreamPreviewSegments, stripLiteralTexts, stripXmlTagBlocks } from "@/lib/stream-preview";
@@ -1100,6 +1101,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [offlineMode, setOfflineMode] = useState(false);
+	    const [showOfflineInvite, setShowOfflineInvite] = useState(false);
+    const [offlineInviteIds, setOfflineInviteIds] = useState<string[]>([]);
     const [theaterMode, setTheaterMode] = useState(() => kvGet(CHAT_THEATER_MODE_PREFIX + session.id) === "1");
     const [offlineTurns, setOfflineTurns] = useState<ChatOfflineTurn[]>([]);
     const [offlineVisibleCount, setOfflineVisibleCount] = useState(OFFLINE_INITIAL_LOAD);
@@ -4128,7 +4131,28 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             return next;
         });
     };
+    const handleInviteOfflineParty = () => {
+        if (isOfflineGenerating) {
+            showChatToast("线下回复生成中");
+            return;
+        }
+        setOfflineInviteIds([]);
+        setShowOfflineInvite(true);
+    };
 
+    const confirmOfflineInvite = () => {
+        try {
+            const { createOfflinePartySession } = require("@/lib/offline-party") as typeof import("@/lib/offline-party");
+            const party = createOfflinePartySession(session, offlineInviteIds);
+            setShowOfflineInvite(false);
+            kvSet("chat-offline-mode:" + party.id, "1");
+            window.dispatchEvent(new CustomEvent("open-app", {
+                detail: { appId: "chat", sessionId: party.id },
+            }));
+        } catch (err) {
+            showChatToast(err instanceof Error ? err.message : "邀请失败");
+        }
+    };
     const toggleTheaterMode = () => {
         setShowPlusMenu(false);
         setShowEmojiPanel(false);
