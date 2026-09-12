@@ -926,8 +926,9 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
     onToggleOfflineMode: () => void;
     onCloseEmojiPanel: () => void;
     onToggleEmojiPanel: () => void;
-    onSendText: (text: string) => boolean;
+       onSendText: (text: string) => boolean;
     onStopGeneration: () => void;
+    onInviteOfflineParty: () => void;
 }>(function OfflineTextInputBar({
     isOfflineGenerating,
     isSpectator,
@@ -936,8 +937,9 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
     onToggleOfflineMode,
     onCloseEmojiPanel,
     onToggleEmojiPanel,
-    onSendText,
+       onSendText,
     onStopGeneration,
+    onInviteOfflineParty,
 }, ref) {
     const [inputText, setInputText] = useState("");
     const inputTextRef = useRef("");
