@@ -1035,7 +1035,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                     onClick={onToggleOfflineMode}
                     disabled={isOfflineGenerating}
                     className="ui-bare-btn text-[var(--c-text)]"
-                    aria-label="返回线上模式"
+                                       aria-label="返回线上模式"
                     title="返回线上模式"
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1043,6 +1043,16 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                         <path d="M8 9h8" />
                         <path d="M8 13h5" />
                     </svg>
+                </button>
+                <button
+                    type="button"
+                    onClick={onInviteOfflineParty}
+                    disabled={isOfflineGenerating}
+                    className="ui-bare-btn text-[var(--c-text)]"
+                    aria-label="邀请加入线下"
+                    title="邀请加入线下"
+                >
+                    +
                 </button>
                 <button
                     onClick={onToggleEmojiPanel}
