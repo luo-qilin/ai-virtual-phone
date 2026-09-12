@@ -5497,6 +5497,33 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     </span>
                 </div>
             </header>
+			            {showOfflineInvite && (
+                <div className="modal-overlay" onClick={() => setShowOfflineInvite(false)}>
+                    <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">邀请加入这场线下</h3>
+                        </div>
+                        <div style={{ maxHeight: "40dvh", overflowY: "auto", padding: 12 }}>
+                            {listOfflineInviteCandidates(session).map(c => (
+                                <label key={c.id} className="flex items-center gap-2" style={{ padding: "8px 0" }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={offlineInviteIds.includes(c.id)}
+                                        onChange={e => setOfflineInviteIds(prev =>
+                                            e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                                        )}
+                                    />
+                                    <span>{c.name}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="ui-btn ui-btn-outline" onClick={() => setShowOfflineInvite(false)}>取消</button>
+                            <button className="ui-btn ui-btn-primary" onClick={confirmOfflineInvite}>开始线下</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <ChatPluginSlot
                 name="chat.header"
                 slotProps={{ sessionId: session.id, isGroup: !!session.isGroup }}
