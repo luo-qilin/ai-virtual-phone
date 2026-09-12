@@ -1045,15 +1045,16 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                         <path d="M8 13h5" />
                     </svg>
                 </button>
-                <button
+                               <button
                     type="button"
                     onClick={onInviteOfflineParty}
                     disabled={isOfflineGenerating}
                     className="ui-bare-btn text-[var(--c-text)]"
                     aria-label="邀请加入线下"
                     title="邀请加入线下"
+                    style={{ fontSize: 13, padding: "0 6px" }}
                 >
-                    +
+                    邀请
                 </button>
                 <button
                     onClick={onToggleEmojiPanel}
