@@ -1,5 +1,6 @@
 "use client";
 
+import { createOfflinePartySession, listOfflineInviteCandidates } from "@/lib/offline-party";
 import { forwardRef, Fragment, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChatSession, ChatMessage, CHAT_APP_SETTINGS_UPDATED_EVENT, CHAT_INITIAL_VISIBLE_MESSAGE_COUNT, CHAT_LOAD_MORE_MESSAGE_COUNT, CHAT_REQUEST_REPLY_EVENT, loadChatAppSettings, loadChatMessages, loadChatContacts, loadChatSessions, saveChatSessions, pushChatMessage, updateChatMessage, deleteChatMessage, deleteChatMessagesFrom, deleteChatMessagesByIds, retractChatMessage, editChatMessage, updateMessageMediaData, replaceResponseBatchWithParts, replaceGroupResponseRound, isReadingDiscussMessage, isSystemInstructionMessage, createResponseBatchId, createResponseRoundId, getLatestStateValues, getLatestCharacterStateValues, compareChatMessages, isSessionStreamingEnabled } from "@/lib/chat-storage";
 import { cleanStreamText, splitStreamPreviewSegments, stripLiteralTexts, stripXmlTagBlocks } from "@/lib/stream-preview";
@@ -926,8 +927,9 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
     onToggleOfflineMode: () => void;
     onCloseEmojiPanel: () => void;
     onToggleEmojiPanel: () => void;
-    onSendText: (text: string) => boolean;
+       onSendText: (text: string) => boolean;
     onStopGeneration: () => void;
+    onInviteOfflineParty: () => void;
 }>(function OfflineTextInputBar({
     isOfflineGenerating,
     isSpectator,
@@ -936,8 +938,9 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
     onToggleOfflineMode,
     onCloseEmojiPanel,
     onToggleEmojiPanel,
-    onSendText,
+       onSendText,
     onStopGeneration,
+    onInviteOfflineParty,
 }, ref) {
     const [inputText, setInputText] = useState("");
     const inputTextRef = useRef("");
@@ -1033,7 +1036,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                     onClick={onToggleOfflineMode}
                     disabled={isOfflineGenerating}
                     className="ui-bare-btn text-[var(--c-text)]"
-                    aria-label="返回线上模式"
+                                       aria-label="返回线上模式"
                     title="返回线上模式"
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1041,6 +1044,16 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                         <path d="M8 9h8" />
                         <path d="M8 13h5" />
                     </svg>
+                </button>
+                <button
+                    type="button"
+                    onClick={onInviteOfflineParty}
+                    disabled={isOfflineGenerating}
+                    className="ui-bare-btn text-[var(--c-text)]"
+                    aria-label="邀请加入线下"
+                    title="邀请加入线下"
+                >
+                    +
                 </button>
                 <button
                     onClick={onToggleEmojiPanel}
@@ -1088,6 +1101,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     });
     const [isGenerating, setIsGenerating] = useState(false);
     const [offlineMode, setOfflineMode] = useState(false);
+	    const [showOfflineInvite, setShowOfflineInvite] = useState(false);
+    const [offlineInviteIds, setOfflineInviteIds] = useState<string[]>([]);
     const [theaterMode, setTheaterMode] = useState(() => kvGet(CHAT_THEATER_MODE_PREFIX + session.id) === "1");
     const [offlineTurns, setOfflineTurns] = useState<ChatOfflineTurn[]>([]);
     const [offlineVisibleCount, setOfflineVisibleCount] = useState(OFFLINE_INITIAL_LOAD);
@@ -1722,7 +1737,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     useEffect(() => {
         setUserIdentity(resolveUserIdentity(session.contactId, "chat"));
         setTransientMessages([]);
-        setOfflineMode(kvGet(CHAT_OFFLINE_MODE_PREFIX + session.id) === "1");
+               setOfflineMode(session.offlineParty === true || kvGet(CHAT_OFFLINE_MODE_PREFIX + session.id) === "1");
         setOfflineVisibleCount(OFFLINE_INITIAL_LOAD);
         offlineTextInputRef.current?.clear();
         setPendingOfflineUserText("");
@@ -4116,7 +4131,28 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             return next;
         });
     };
+    const handleInviteOfflineParty = () => {
+        if (isOfflineGenerating) {
+            showChatToast("线下回复生成中");
+            return;
+        }
+        setOfflineInviteIds([]);
+        setShowOfflineInvite(true);
+    };
 
+    const confirmOfflineInvite = () => {
+        try {
+            const { createOfflinePartySession } = require("@/lib/offline-party") as typeof import("@/lib/offline-party");
+            const party = createOfflinePartySession(session, offlineInviteIds);
+            setShowOfflineInvite(false);
+            kvSet("chat-offline-mode:" + party.id, "1");
+            window.dispatchEvent(new CustomEvent("open-app", {
+                detail: { appId: "chat", sessionId: party.id },
+            }));
+        } catch (err) {
+            showChatToast(err instanceof Error ? err.message : "邀请失败");
+        }
+    };
     const toggleTheaterMode = () => {
         setShowPlusMenu(false);
         setShowEmojiPanel(false);
@@ -5461,6 +5497,33 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     </span>
                 </div>
             </header>
+			            {showOfflineInvite && (
+                <div className="modal-overlay" onClick={() => setShowOfflineInvite(false)}>
+                    <div className="modal-dialog" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">邀请加入这场线下</h3>
+                        </div>
+                        <div style={{ maxHeight: "40dvh", overflowY: "auto", padding: 12 }}>
+                            {listOfflineInviteCandidates(session).map(c => (
+                                <label key={c.id} className="flex items-center gap-2" style={{ padding: "8px 0" }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={offlineInviteIds.includes(c.id)}
+                                        onChange={e => setOfflineInviteIds(prev =>
+                                            e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                                        )}
+                                    />
+                                    <span>{c.name}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="ui-btn ui-btn-outline" onClick={() => setShowOfflineInvite(false)}>取消</button>
+                            <button className="ui-btn ui-btn-primary" onClick={confirmOfflineInvite}>开始线下</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <ChatPluginSlot
                 name="chat.header"
                 slotProps={{ sessionId: session.id, isGroup: !!session.isGroup }}
@@ -6240,6 +6303,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onToggleEmojiPanel={() => { setShowEmojiPanel(!showEmojiPanel); setShowStickerPanel(false); setShowPlusMenu(false); }}
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
+					onInviteOfflineParty={handleInviteOfflineParty}
                 />
             ) : (
             <ChatTextInputBar

@@ -1,6 +1,8 @@
 // lib/group-chat-engine.ts
 // Group chat engine: single API call for all characters.
 
+import { loadUserIdentities } from "./settings-storage";
+import { buildOfflinePartyMemoryPrompt } from "./offline-party";
 import { ChatSession, ChatMessage, loadChatAppSettings, createResponseBatchId, createResponseRoundId, createToolExecutionId, loadChatSessions, getLatestCharacterStateValues, isSessionStreamingEnabled } from "./chat-storage";
 import { extractTextToolDirectiveText } from "./text-tool-protocol";
 import type { ApiConfig, PresetConfig, RegexConfig } from "./settings-types";
@@ -295,7 +297,10 @@ async function buildGroupChatPromptMessages(
 ): Promise<{ llmMessages: LLMMessage[]; config: ApiConfig; preset: PresetConfig | null; regexes: RegexConfig[]; nameToId: Map<string, string>; memberNames: string[]; enabledTools: import("./tool-storage").EnabledTool[]; userName: string; appTags: string[] }> {
     const chars = loadCharacters();
     const charMap = new Map(chars.map(c => [c.id, c]));
-    const participantIds = session.participantIds || [];
+       const participantIds = (session.participantIds || []).filter(id => {
+        const c = charMap.get(id);
+        return c && !c.isUserProxy;
+    });
 
     const bindings = loadBindingConfig();
     const activeSlot = resolveBinding(bindings, undefined, "group_chat");
@@ -319,7 +324,12 @@ async function buildGroupChatPromptMessages(
         ? []
         : (activeSlot.regexIds || []).map(id => allRegexes.find(r => r.id === id)).filter(Boolean) as typeof allRegexes;
 
-    const userIdentity = resolveUserIdentity(undefined, "group_chat");
+      let userIdentity = resolveUserIdentity(undefined, "group_chat");
+    if (session.offlineUserProxyId) {
+        const identities = loadUserIdentities();
+        const hit = identities.find(i => `userproxy_${i.id}` === session.offlineUserProxyId);
+        if (hit) userIdentity = hit;
+    }
     const userName = userIdentity?.name ?? "用户";
     const baseAppTags = options?.appTags ?? ["group_chat", "text"];
     // 围观群：追加 spectator tag 激活围观语境条目（tags 子集过滤，老条目不受影响）。
@@ -503,6 +513,15 @@ async function buildGroupChatPromptMessages(
             role: "system",
             content: "本次自定义 APP AI 任务只输出严格 JSON。不要输出 Markdown 代码块、解释文字或聊天富媒体指令。",
         });
+    }
+        if (session.offlineParty) {
+        const memory = buildOfflinePartyMemoryPrompt(session);
+        if (memory) {
+            llmMessages.push({
+                role: "system",
+                content: `【多人线下·用户身份记忆】\n${memory}`,
+            });
+        }
     }
     appendEmptyGenerateGuardMessage(llmMessages, config, history);
 
