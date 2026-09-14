@@ -5471,35 +5471,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const editingSystemInstruction = editingMessage ? isSystemInstructionMessage(editingMessage) : false;
 
     const renderCallOverlay = () => {
-        if (showVoiceCall && character) {
-            return (
-                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
-                    <VoiceCallScreen
-                        session={session}
-                        character={character}
-                        initiator={callInitiator}
-                        offlineMode={isOfflineCall}
-                        onMinimize={(d) => { setMinimizedDuration(d); setCallMinimized(true); }}
-                        onEnd={() => returnFromCall(() => { setShowVoiceCall(false); setCallMinimized(false); })}
-                    />
-                </div>
-            );
-        }
-        if (showVideoCall && character) {
-            return (
-                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
-                    <VideoCallScreen
-                        session={session}
-                        character={character}
-                        initiator={callInitiator}
-                        offlineMode={isOfflineCall}
-                        onMinimize={(d) => { setMinimizedDuration(d); setCallMinimized(true); }}
-                        onEnd={() => returnFromCall(() => { setShowVideoCall(false); setCallMinimized(false); })}
-                    />
-                </div>
-            );
-        }
-        return null;
+        return null; // 通话已提升至系统层
     };
 
     const chatRoomBackgroundStyle = bgImageResolved ? {
@@ -6378,8 +6350,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
 					onInviteOfflineParty={handleInviteOfflineParty}
-                    onStartVideoCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVideoCall(true); }}
-                    onStartVoiceCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVoiceCall(true); }}
+                    onStartVideoCall={() => { setIsOfflineCall(true); handleStartSystemCall("video"); }}
+                    onStartVoiceCall={() => { setIsOfflineCall(true); handleStartSystemCall("voice"); }}
                 />
             ) : (
             <ChatTextInputBar
@@ -6408,8 +6380,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
 	                onCloseTheaterMode={closeTheaterMode}
 	                onOpenRichModal={(modal) => { setShowPlusMenu(false); setRichModal(modal); }}
                 onOpenCustomPlusAction={handleOpenCustomPlusAction}
-                onStartVideoCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setIsOfflineCall(false); setShowVideoCall(true); }}
-                onStartVoiceCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setIsOfflineCall(false); setShowVoiceCall(true); }}
+                onStartVideoCall={() => { setIsOfflineCall(false); handleStartSystemCall("video"); }}
+                onStartVoiceCall={() => { setIsOfflineCall(false); handleStartSystemCall("voice"); }}
                 onSendText={handleSendText}
                 onStopGeneration={clearStuckGeneration}
                 onTriggerAIResponse={triggerAIResponse}
