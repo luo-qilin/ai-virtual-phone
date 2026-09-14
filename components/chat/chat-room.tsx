@@ -5485,13 +5485,13 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         <ChevronLeft size={24} strokeWidth={1.5} />
                     </button>
                     <span className="page-title" style={{ position: 'relative' }}>
-                        {offlineMode ? "面对面 · " : ""}
+                        {offlineMode ? "线下 · " : ""}
                         {session.isGroup
                             ? `${session.groupName || "群聊"}(${(session.participantIds?.length || 0) + (session.isSpectator ? 0 : 1)})`
                             : (session.alias || character?.name || `User_${session.contactId.slice(-4)}`)}
                         {(isGenerating || isOfflineGenerating) && (
                             <span className="chat-typing-indicator">
-                                {offlineMode ? "正在回应" : "对方正在输入"}<span className="chat-typing-dots"><i/><i/><i/></span>
+                                {offlineMode ? "线下生成中" : "对方正在输入"}<span className="chat-typing-dots"><i/><i/><i/></span>
                             </span>
                         )}
                     </span>
