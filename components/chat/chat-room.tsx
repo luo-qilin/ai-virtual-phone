@@ -5530,8 +5530,12 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             {/* 最小化悬浮球 */}
             {callMinimized && (showVoiceCall || showVideoCall) && character && (
                 <div
-                    onClick={() => setCallMinimized(false)}
-                    className="fixed right-4 top-20 z-[120] flex items-center gap-2 px-3 py-2 rounded-full bg-black/75 text-white backdrop-blur border border-white/20 shadow-lg cursor-pointer animate-pulse"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent("chat-open-session", { detail: { sessionId: session.id } }));
+                        setCallMinimized(false);
+                    }}
+                    className="fixed right-4 top-20 z-[999] flex items-center gap-2 px-3 py-2 rounded-full bg-black/75 text-white backdrop-blur border border-white/20 shadow-lg cursor-pointer animate-pulse"
                 >
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
                     <span className="ts-12 font-medium">
