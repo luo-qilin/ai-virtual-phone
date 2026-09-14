@@ -5471,7 +5471,49 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const editingSystemInstruction = editingMessage ? isSystemInstructionMessage(editingMessage) : false;
 
     const renderCallOverlay = () => {
-        return null; // 通话已提升至系统层
+        if (showVoiceCall && character) {
+            return (
+                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
+                    <VoiceCallScreen
+                        session={session}
+                        character={character}
+                        initiator={callInitiator}
+                        offlineMode={isOfflineCall}
+                        onMinimize={() => setCallMinimized(true)}
+                        onEnd={() => returnFromCall(() => { setShowVoiceCall(false); setCallMinimized(false); })}
+                        onConnect={() => {
+                            if (callInitiator === "user") {
+                                const actionText = isOfflineCall ? "[我向对方发起并接通了面对面语音对话]" : `[我向${character.name}发起了语音通话]`;
+                                const sysMsg = pushChatMessage({ sessionId: session.id, role: "user", content: actionText });
+                                setMessages(prev => [...prev, sysMsg]);
+                            }
+                        }}
+                    />
+                </div>
+            );
+        }
+        if (showVideoCall && character) {
+            return (
+                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
+                    <VideoCallScreen
+                        session={session}
+                        character={character}
+                        initiator={callInitiator}
+                        offlineMode={isOfflineCall}
+                        onMinimize={() => setCallMinimized(true)}
+                        onEnd={() => returnFromCall(() => { setShowVideoCall(false); setCallMinimized(false); })}
+                        onConnect={() => {
+                            if (callInitiator === "user") {
+                                const actionText = isOfflineCall ? "[我向对方发起并接通了面对面视频对话]" : `[我向${character.name}发起了视频通话]`;
+                                const sysMsg = pushChatMessage({ sessionId: session.id, role: "user", content: actionText });
+                                setMessages(prev => [...prev, sysMsg]);
+                            }
+                        }}
+                    />
+                </div>
+            );
+        }
+        return null;
     };
 
     const chatRoomBackgroundStyle = bgImageResolved ? {
