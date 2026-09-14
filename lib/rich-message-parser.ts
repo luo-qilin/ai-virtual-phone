@@ -303,16 +303,12 @@ const RICH_PATTERNS: {
         build: (m) => ({ content: "", mediaType: "group_admin_notice" as const, mediaData: { adminAction: "kick" as const, adminActorName: m[1]?.trim(), adminTargetName: m[2]?.trim() } }),
     },
     {
-        regex: /\[([^\]]+?)邀请([^\]]+?)加入了?群聊\]/,
-        build: (m) => ({ content: "", mediaType: "group_admin_notice" as const, mediaData: { adminAction: "invite" as const, adminActorName: m[1]?.trim(), adminTargetName: m[2]?.trim() } }),
-    },
-    {
-        // [入群邀请:群聊ID:群名称:邀请人名称] 或 [入群邀请:群名称:邀请人名称]
         // 兼容多样化 AI 格式：
         // 1. [入群邀请:群聊ID:群名称:邀请人名称]
         // 2. [入群邀请:群名称:邀请人名称]
         // 3. [入群邀请:群名称]
-        regex: /\[入群邀请[：:]([^\]：:]+?)(?:[：:]([^\]：:]+?))?(?:[：:]([^\]]+?))?\]/,
+        // 4. [邀请入群:...] / [群邀请:...] / [邀请加入群聊:...]
+        regex: /\[(?:入群邀请|群邀请|邀请入群|邀请加入群聊)[：:]([^\]：:]+?)(?:[：:]([^\]：:]+?))?(?:[：:]([^\]]+?))?\]/,
         build: (m) => {
             const part1 = m[1]?.trim() || "";
             const part2 = m[2]?.trim() || "";
@@ -341,6 +337,10 @@ const RICH_PATTERNS: {
                 },
             };
         },
+    },
+    {
+        regex: /\[([^\]]+?)邀请([^\]]+?)加入了?群聊\]/,
+        build: (m) => ({ content: "", mediaType: "group_admin_notice" as const, mediaData: { adminAction: "invite" as const, adminActorName: m[1]?.trim(), adminTargetName: m[2]?.trim() } }),
     },
     {
         // [A将B禁言30分钟]（必须先于下面的宽松模式，否则 "A将B禁言了1天" 会被错误拆分）
