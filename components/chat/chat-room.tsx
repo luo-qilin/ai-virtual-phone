@@ -4338,6 +4338,18 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         setActiveOfflineTarget(null);
     };
 
+    const handleStartOfflineVideoCall = () => {
+        if (isOfflineGenerating) return;
+        setCallInitiator("user");
+        setShowVideoCall(true);
+    };
+
+    const handleStartOfflineVoiceCall = () => {
+        if (isOfflineGenerating) return;
+        setCallInitiator("user");
+        setShowVoiceCall(true);
+    };
+
     const handleOfflineRetryFrom = async (turnId: string) => {
         if (isOfflineGenerating) {
             showChatToast("线下回复生成中");
@@ -5426,7 +5438,11 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         needsInitialScrollRef.current = true;
         prevMsgCountRef.current = 0;
         syncMessagesFromStorage();
-        triggerReply();
+        if (offlineMode) {
+            setOfflineTurns(loadChatOfflineTurns(session.id));
+        } else {
+            triggerReply();
+        }
     };
 
     const editingMessage = editingMessageId ? messages.find(m => m.id === editingMessageId) : null;
