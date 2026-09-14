@@ -997,7 +997,6 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
             return;
         }
         const trimmed = inputTextRef.current.trim();
-        if (!trimmed && !isSpectator) return;
         if (!onSendText(trimmed)) return;
         inputTextRef.current = "";
         setInputText("");
@@ -1096,7 +1095,7 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
                 <button
                     type="button"
                     onClick={() => { if (isOfflineGenerating) onStopGeneration(); else handleSubmit(); }}
-                    disabled={!isOfflineGenerating && !isSpectator && !inputText.trim()}
+                    disabled={!isOfflineGenerating && isSpectator}
                     className="ui-bare-btn text-[var(--c-text)]"
                     aria-label={isOfflineGenerating ? "停止线下生成" : "发送"}
                     title={isOfflineGenerating ? "停止线下生成" : "发送"}
