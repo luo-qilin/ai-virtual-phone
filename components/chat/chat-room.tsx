@@ -930,6 +930,8 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
        onSendText: (text: string) => boolean;
     onStopGeneration: () => void;
     onInviteOfflineParty: () => void;
+    onStartVideoCall?: () => void;
+    onStartVoiceCall?: () => void;
 }>(function OfflineTextInputBar({
     isOfflineGenerating,
     isSpectator,
@@ -941,6 +943,8 @@ const OfflineTextInputBar = memo(forwardRef<OfflineTextInputHandle, {
        onSendText,
     onStopGeneration,
     onInviteOfflineParty,
+    onStartVideoCall,
+    onStartVoiceCall,
 }, ref) {
     const [inputText, setInputText] = useState("");
     const inputTextRef = useRef("");
@@ -5481,13 +5485,13 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         <ChevronLeft size={24} strokeWidth={1.5} />
                     </button>
                     <span className="page-title" style={{ position: 'relative' }}>
-                        {offlineMode ? "线下 · " : ""}
+                        {offlineMode ? "面对面 · " : ""}
                         {session.isGroup
                             ? `${session.groupName || "群聊"}(${(session.participantIds?.length || 0) + (session.isSpectator ? 0 : 1)})`
                             : (session.alias || character?.name || `User_${session.contactId.slice(-4)}`)}
                         {(isGenerating || isOfflineGenerating) && (
                             <span className="chat-typing-indicator">
-                                {offlineMode ? "线下生成中" : "对方正在输入"}<span className="chat-typing-dots"><i/><i/><i/></span>
+                                {offlineMode ? "正在回应" : "对方正在输入"}<span className="chat-typing-dots"><i/><i/><i/></span>
                             </span>
                         )}
                     </span>
