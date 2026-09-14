@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatSession, ChatMessage, loadChatMessages, pushChatMessage, getLatestCharacterStateValues } from "@/lib/chat-storage";
+import { appendChatOfflineTurn } from "@/lib/chat-offline-storage";
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
 import type { StateValue } from "@/lib/chat-storage";
 import { parseStateValues, mergeStateValues } from "@/lib/state-value-parser";
@@ -45,6 +46,7 @@ type VoiceCallScreenProps = {
     onEnd: () => void;
     onConnect?: () => void;
     initiator?: "user" | "character";
+    offlineMode?: boolean;
 };
 
 function stripBilingualForSpeech(text: string): string {
@@ -56,7 +58,7 @@ function stripBilingualForSpeech(text: string): string {
 
 // ── Component ───────────────────────────────────────
 
-export function VoiceCallScreen({ session, character, onEnd, onConnect, initiator = "user" }: VoiceCallScreenProps) {
+export function VoiceCallScreen({ session, character, onEnd, onConnect, initiator = "user", offlineMode }: VoiceCallScreenProps) {
     // iOS 保留 Web Speech 免提 + Web Audio 播放（麦克风会话共存的老方案）；
     // 其余设备改「按住说话 + 云端转写」，播放走媒体元素（音量键可控、无静音拨键坑）。
     // 没配 OpenAI 兼容识别时回落旧行为（安卓=文字输入）。
@@ -571,13 +573,23 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, initiato
             window.speechSynthesis.cancel();
         }
 
-        const endMsg = pushChatMessage({
-            sessionId: session.id,
-            role: "user",
-            content: `[我挂断了语音通话]`,
-            mediaData: { callDuration: formatTime(callDuration) },
-        });
-        messagesRef.current = [...messagesRef.current, endMsg];
+        if (offlineMode) {
+            appendChatOfflineTurn({
+                sessionId: session.id,
+                userContent: `[发起并结束了面对面语音聊天]`,
+                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
+                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
+                summaryTag: "面对面",
+            });
+        } else {
+            const endMsg = pushChatMessage({
+                sessionId: session.id,
+                role: "user",
+                content: `[我挂断了语音通话]`,
+                mediaData: { callDuration: formatTime(callDuration) },
+            });
+            messagesRef.current = [...messagesRef.current, endMsg];
+        }
 
         // Delay then close
         setTimeout(() => onEnd(), 1500);

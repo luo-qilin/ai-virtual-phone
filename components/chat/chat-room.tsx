@@ -1165,6 +1165,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [showSettings, setShowSettings] = useState(false);
     const [showVoiceCall, setShowVoiceCall] = useState(false);
     const [showVideoCall, setShowVideoCall] = useState(false);
+    const [isOfflineCall, setIsOfflineCall] = useState(false);
     const [callInitiator, setCallInitiator] = useState<"user" | "character">("user");
     const [callInitiatorName, setCallInitiatorName] = useState<string>("");
     const [userIdentity, setUserIdentity] = useState<UserIdentity | null>(null);
@@ -5469,6 +5470,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     session={session}
                     character={character}
                     initiator={callInitiator}
+                    offlineMode={isOfflineCall}
                     onEnd={() => returnFromCall(() => setShowVoiceCall(false))}
                 />
             );
@@ -5494,6 +5496,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     session={session}
                     character={character}
                     initiator={callInitiator}
+                    offlineMode={isOfflineCall}
                     onEnd={() => returnFromCall(() => setShowVideoCall(false))}
                 />
             );
@@ -6349,8 +6352,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
 					onInviteOfflineParty={handleInviteOfflineParty}
-                    onStartVideoCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setShowVideoCall(true); }}
-                    onStartVoiceCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setShowVoiceCall(true); }}
+                    onStartVideoCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVideoCall(true); }}
+                    onStartVoiceCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVideoCall(true); }}
                 />
             ) : (
             <ChatTextInputBar
@@ -6379,8 +6382,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
 	                onCloseTheaterMode={closeTheaterMode}
 	                onOpenRichModal={(modal) => { setShowPlusMenu(false); setRichModal(modal); }}
                 onOpenCustomPlusAction={handleOpenCustomPlusAction}
-                onStartVideoCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setShowVideoCall(true); }}
-                onStartVoiceCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setShowVoiceCall(true); }}
+                onStartVideoCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setIsOfflineCall(false); setShowVideoCall(true); }}
+                onStartVoiceCall={() => { cancelFollowUp(session.id); setShowPlusMenu(false); setCallInitiator("user"); setIsOfflineCall(false); setShowVoiceCall(true); }}
                 onSendText={handleSendText}
                 onStopGeneration={clearStuckGeneration}
                 onTriggerAIResponse={triggerAIResponse}
