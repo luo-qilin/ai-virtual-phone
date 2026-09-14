@@ -5527,15 +5527,15 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     return (
         <div ref={wrapperRef} className={`session-${session.id} chat-room-wrapper page-shell inset-0 flex flex-col z-20`} style={chatRoomBackgroundStyle} {...(bgLoading ? { "data-loading": "" } : {})} {...(bgImageResolved ? { "data-has-bg-image": "" } : {})} {...(showSettings ? { "data-settings-open": "" } : {})}>
             {renderCallOverlay()}
-            {/* 最小化悬浮球 */}
-            {callMinimized && (showVoiceCall || showVideoCall) && character && (
+            {/* 最小化悬浮球：使用 React Portal 渲染到 body 全局层级，防止随 ChatRoom 隐藏而丢失 */}
+            {callMinimized && (showVoiceCall || showVideoCall) && character && typeof document !== "undefined" && createPortal(
                 <div
                     onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent("chat-open-session", { detail: { sessionId: session.id } }));
                         setCallMinimized(false);
                     }}
-                    className="fixed right-4 top-20 z-[999] flex items-center gap-2 px-3 py-2 rounded-full bg-black/75 text-white backdrop-blur border border-white/20 shadow-lg cursor-pointer animate-pulse"
+                    className="fixed right-4 top-20 z-[99999] flex items-center gap-2 px-3 py-2 rounded-full bg-black/75 text-white backdrop-blur border border-white/20 shadow-lg cursor-pointer animate-pulse"
                 >
                     <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
                     <span className="ts-12 font-medium">
@@ -5545,7 +5545,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                             {(minimizedDuration % 60).toString().padStart(2, "0")}
                         </span>
                     </span>
-                </div>
+                </div>,
+                document.body
             )}
             {/* Custom CSS Injection for this session — scoped to prevent leaking */}
             {liveCSS && (
