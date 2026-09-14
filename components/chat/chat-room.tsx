@@ -2553,6 +2553,28 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     handleGroupPaymentRequestAction("decline", claimer, owner);
                     continue;
                 }
+                if (part.mediaType === "group_invite") {
+                    if (!isFirst && !revealOptions?.instantReveal) await abortableDelay(800, guard?.signal);
+                    throwIfGenerationStopped(guard);
+                    isFirst = false;
+                    const msg = pushChatMessage({
+                        sessionId: session.id,
+                        role: "assistant",
+                        content: "",
+                        mediaType: "group_invite",
+                        mediaData: {
+                            targetGroupId: part.mediaData?.targetGroupId || session.id,
+                            targetGroupName: part.mediaData?.targetGroupName || session.groupName || session.alias || "群聊",
+                            inviterName: part.mediaData?.inviterName || r.characterName,
+                            status: "pending",
+                        },
+                        senderCharacterId: r.characterId,
+                        senderName: r.characterName,
+                    });
+                    savedAnyPart = true;
+                    msgsSetter(prev => [...prev, msg]);
+                    continue;
+                }
                 if (part.mediaType === "group_admin_notice") {
                     if (!isFirst && !revealOptions?.instantReveal) await abortableDelay(800, guard?.signal);
                     throwIfGenerationStopped(guard);

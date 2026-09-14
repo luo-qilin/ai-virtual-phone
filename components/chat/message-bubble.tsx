@@ -121,6 +121,8 @@ export const MessageBubble = memo(function MessageBubble({ msg, onUpdate, charNa
             return <XiaohongshuShareBubble msg={msg} />;
         case "audio":
             return <VoiceMessageBubble msg={msg} characterId={characterId} onUpdate={onUpdate} defaultTranslationExpanded={defaultTranslationExpanded} />;
+        case "group_invite":
+            return <GroupInviteBubble msg={msg} onUpdate={onUpdate} />;
         default: {
             // 聊天插件自定义消息类型：mediaType = "plugin:<kind>"，由注册插件渲染
             if (msg.mediaType?.startsWith("plugin:")) {
@@ -2332,6 +2334,82 @@ function VoiceMessageBubble({ msg, characterId, onUpdate, defaultTranslationExpa
                 ))}
             </div>
             <span className="voice-msg-dur">{synthFailed ? "合成失败·点击重试" : `${duration}"`}</span>
+        </div>
+    );
+}
+
+function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (updated: ChatMessage) => void }) {
+    const data = msg.mediaData;
+    const targetGroupId = data?.targetGroupId;
+    const targetGroupName = data?.targetGroupName || "群聊";
+    const inviterName = data?.inviterName || "对方";
+    const status = data?.status || "pending";
+
+    const handleAction = (accepted: boolean) => {
+        const newStatus = accepted ? "accepted" : "declined";
+        const updatedData = { ...data, status: newStatus };
+        updateMessageMediaData(msg.id, updatedData);
+        if (onUpdate) onUpdate({ ...msg, mediaData: updatedData });
+
+        if (accepted) {
+            // 如果提供了目标群ID，直接查找并加入；没有则按群名查找
+            const sessions = loadChatSessions();
+            let targetSession = targetGroupId ? sessions.find(s => s.id === targetGroupId) : null;
+            if (!targetSession) {
+                targetSession = sessions.find(s => s.isGroup && (s.groupName === targetGroupName || s.alias === targetGroupName));
+            }
+            if (targetSession) {
+                // 解除围观状态
+                targetSession.isSpectator = false;
+                const idx = sessions.findIndex(s => s.id === targetSession!.id);
+                if (idx !== -1) {
+                    sessions[idx] = { ...sessions[idx], isSpectator: false };
+                    saveChatSessions(sessions);
+                }
+                // 在对应群聊中添加进群通知
+                pushChatMessage({
+                    sessionId: targetSession.id,
+                    role: "user",
+                    content: `${inviterName}邀请你加入了群聊`,
+                    mediaType: "group_admin_notice",
+                    mediaData: { adminAction: "invite", adminActorName: inviterName, adminTargetName: "你" },
+                });
+                window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: targetSession.id } }));
+            }
+        }
+    };
+
+    return (
+        <div className="w-[240px] rounded-2xl border border-[var(--c-border)] bg-[var(--c-card)]/95 backdrop-blur p-3.5 flex flex-col gap-3 ui-bubble-shadow">
+            <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                    <Users size={20} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0 flex-1">
+                    <span className="ts-13 font-semibold text-[var(--c-text)] truncate">{targetGroupName}</span>
+                    <span className="ts-11 text-[var(--c-icon)] truncate">{inviterName} 邀请你加入群聊</span>
+                </div>
+            </div>
+            {status === "pending" ? (
+                <div className="flex gap-2 pt-1 border-t border-[var(--c-border)]/50">
+                    <button
+                        onClick={() => handleAction(false)}
+                        className="flex-1 py-1.5 rounded-xl ts-12 font-medium bg-[var(--c-input)] text-[var(--c-text)] hover:opacity-80 transition-opacity"
+                    >
+                        拒绝
+                    </button>
+                    <button
+                        onClick={() => handleAction(true)}
+                        className="flex-1 py-1.5 rounded-xl ts-12 font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
+                    >
+                        同意入群
+                    </button>
+                </div>
+            ) : (
+                <div className="ts-12 text-center text-[var(--c-icon)] pt-1 border-t border-[var(--c-border)]/50">
+                    {status === "accepted" ? "已同意加入群聊" : "已拒绝邀请"}
+                </div>
+            )}
         </div>
     );
 }

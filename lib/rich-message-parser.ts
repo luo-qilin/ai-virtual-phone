@@ -307,6 +307,23 @@ const RICH_PATTERNS: {
         build: (m) => ({ content: "", mediaType: "group_admin_notice" as const, mediaData: { adminAction: "invite" as const, adminActorName: m[1]?.trim(), adminTargetName: m[2]?.trim() } }),
     },
     {
+        // [入群邀请:群聊ID:群名称:邀请人名称] 或 [入群邀请:群名称:邀请人名称]
+        regex: /\[入群邀请[：:]([^\]：:]+?)[：:]([^\]：:]+?)(?:[：:]([^\]]+?))?\]/,
+        build: (m) => {
+            const hasId = Boolean(m[3]);
+            return {
+                content: "",
+                mediaType: "group_invite" as const,
+                mediaData: {
+                    targetGroupId: hasId ? m[1].trim() : "",
+                    targetGroupName: hasId ? m[2].trim() : m[1].trim(),
+                    inviterName: hasId ? m[3].trim() : m[2].trim(),
+                    status: "pending" as const,
+                },
+            };
+        },
+    },
+    {
         // [A将B禁言30分钟]（必须先于下面的宽松模式，否则 "A将B禁言了1天" 会被错误拆分）
         regex: /\[([^\]：:]+?)将([^\]：:]+?)禁言(?:了)?\s*(\d+)?\s*(分钟|小时|天)?\]/,
         build: (m) => ({
