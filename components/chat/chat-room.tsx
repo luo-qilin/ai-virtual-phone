@@ -5452,20 +5452,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const editingMessage = editingMessageId ? messages.find(m => m.id === editingMessageId) : null;
     const editingSystemInstruction = editingMessage ? isSystemInstructionMessage(editingMessage) : false;
 
-    if (showVoiceCall) {
-        if (session.isGroup && groupCharacters.length > 0) {
-            return (
-                <GroupCallScreen
-                    type="voice"
-                    session={session}
-                    characters={groupCharacters}
-                    initiator={callInitiator}
-                    initiatorName={callInitiatorName}
-                    onEnd={() => returnFromCall(() => setShowVoiceCall(false))}
-                />
-            );
-        }
-        if (character) {
+    const renderCallOverlay = () => {
+        if (showVoiceCall && character) {
             return (
                 <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
                     <VoiceCallScreen
@@ -5479,22 +5467,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 </div>
             );
         }
-    }
-
-    if (showVideoCall) {
-        if (session.isGroup && groupCharacters.length > 0) {
-            return (
-                <GroupCallScreen
-                    type="video"
-                    session={session}
-                    characters={groupCharacters}
-                    initiator={callInitiator}
-                    initiatorName={callInitiatorName}
-                    onEnd={() => returnFromCall(() => setShowVideoCall(false))}
-                />
-            );
-        }
-        if (character) {
+        if (showVideoCall && character) {
             return (
                 <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
                     <VideoCallScreen
@@ -5508,7 +5481,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 </div>
             );
         }
-    }
+        return null;
+    };
 
     const chatRoomBackgroundStyle = bgImageResolved ? {
         backgroundColor: "#fff",
@@ -5520,6 +5494,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
 
     return (
         <div ref={wrapperRef} className={`session-${session.id} chat-room-wrapper page-shell inset-0 flex flex-col z-20`} style={chatRoomBackgroundStyle} {...(bgLoading ? { "data-loading": "" } : {})} {...(bgImageResolved ? { "data-has-bg-image": "" } : {})} {...(showSettings ? { "data-settings-open": "" } : {})}>
+            {renderCallOverlay()}
             {/* Custom CSS Injection for this session — scoped to prevent leaking */}
             {liveCSS && (
                 <SessionCustomCSS css={liveCSS} scope={`.session-${session.id}`} />
