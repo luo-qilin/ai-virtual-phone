@@ -122,8 +122,7 @@ export function canGroupAdminAct(
             return true;
         }
         case "invite": {
-            // Target must be an existing character not already in the group
-            if (targetKey === GROUP_SELF_KEY) return false;
+            if (targetKey === GROUP_SELF_KEY) return session.isSpectator === true;
             if ((session.participantIds || []).includes(targetKey)) return false;
             return true;
         }
@@ -143,7 +142,10 @@ export function resolveGroupMemberKeyByName(
 ): string | null {
     const trimmed = name.trim();
     if (!trimmed) return null;
-    if (trimmed === userName || trimmed === "你") return GROUP_SELF_KEY;
+    if (trimmed === userName || trimmed === "你") {
+        if (session.isSpectator && !options?.includeOutsiders) return null;
+        return GROUP_SELF_KEY;
+    }
     const chars = loadCharacters();
     const inGroup = (session.participantIds || [])
         .map(id => chars.find(c => c.id === id))
@@ -241,7 +243,9 @@ export function applyGroupAdminAction(
             break;
         }
         case "kick": {
-            if (targetKey !== GROUP_SELF_KEY) {
+            if (targetKey === GROUP_SELF_KEY) {
+                updates.isSpectator = true;
+            } else {
                 updates.participantIds = (session.participantIds || []).filter(id => id !== targetKey);
             }
             updates.groupAdminIds = (session.groupAdminIds || []).filter(id => id !== targetKey);
@@ -253,8 +257,12 @@ export function applyGroupAdminAction(
             break;
         }
         case "invite": {
-            const ids = session.participantIds || [];
-            if (!ids.includes(targetKey)) updates.participantIds = [...ids, targetKey];
+            if (targetKey === GROUP_SELF_KEY) {
+                updates.isSpectator = false;
+            } else {
+                const ids = session.participantIds || [];
+                if (!ids.includes(targetKey)) updates.participantIds = [...ids, targetKey];
+            }
             break;
         }
         case "mute": {

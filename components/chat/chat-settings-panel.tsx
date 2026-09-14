@@ -613,9 +613,13 @@ export function ChatSettingsPanel({
         setRosterVersion(v => v + 1);
     };
     const inviteCandidates = session.isGroup
-        ? loadChatContacts()
-            .map(c => characters.find(ch => ch.id === c.characterId))
-            .filter((c): c is NonNullable<typeof c> => Boolean(c && !(session.participantIds || []).includes(c.id)))
+        ? [
+            ...(session.isSpectator ? [{ id: GROUP_SELF_KEY, name: `${userName}（我自己）`, avatar: userIdentity?.avatarUrl || undefined }] : []),
+            ...loadChatContacts()
+                .map(c => characters.find(ch => ch.id === c.characterId))
+                .filter((c): c is NonNullable<typeof c> => Boolean(c && !(session.participantIds || []).includes(c.id)))
+                .map(c => ({ id: c.id, name: c.name, avatar: c.avatar || undefined })),
+        ]
         : [];
     const canInvite = session.isGroup && !session.isSpectator
         && getGroupRole(session, GROUP_SELF_KEY) !== "member";
@@ -918,6 +922,28 @@ export function ChatSettingsPanel({
                                     />
                                 </div>
                             </div>
+                        )}
+                        {!session.isSpectator && (
+                            <button
+                                className="menu-item"
+                                onClick={() => {
+                                    updateSession({ isSpectator: true });
+                                    pushChatMessage({
+                                        sessionId: session.id,
+                                        role: "user",
+                                        content: `${userName}退出了群聊`,
+                                        mediaType: "group_admin_notice",
+                                        mediaData: { adminAction: "kick", adminActorName: userName, adminTargetName: userName },
+                                    });
+                                    setRosterVersion(v => v + 1);
+                                }}
+                            >
+                                <ChatInfoIcon icon={LogOut} color="var(--c-danger)" />
+                                <div className="menu-label-group">
+                                    <span className="menu-label menu-label-danger">退出群聊（转为围观）</span>
+                                    <span className="menu-desc">退出后无法在群内发言，但可继续围观剧情</span>
+                                </div>
+                            </button>
                         )}
                         {!session.isSpectator && ownerKey !== GROUP_SELF_KEY && (
                             <button className="menu-item" onClick={reclaimOwnership}>
