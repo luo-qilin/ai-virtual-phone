@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, createContext, type CSSProperties, type ReactNode } from "react";
-import { Activity, Check, ChevronRight, Clock, Database, FileText, Fingerprint, Globe, HardDrive, Image, Info, KeyRound, Laptop, Layers, Link2, Loader2, LogOut, MessageSquare, Mic, SlidersHorizontal, UserCircle, Wrench, X, CloudUpload } from "lucide-react";
+import { Activity, Check, ChevronRight, Clock, Database, FileText, Fingerprint, Globe, HardDrive, Image, Info, KeyRound, Laptop, Layers, Link2, Loader2, LogOut, MessageSquare, Mic, Search, SlidersHorizontal, UserCircle, Wrench, X, CloudUpload } from "lucide-react";
 import { ConfirmDialog } from "./ui/modal";
 import { useAccount } from "@/lib/account-context";
 import { isSelfHostedModeEnabled } from "@/lib/self-hosting";
@@ -107,6 +107,7 @@ const logoutIconStyle = {
 export function PhoneSettingsApp({ onClose, onNotice }: SettingsPageProps) {
     const [currentPage, setCurrentPage] = useState<SubPage>("main");
     const [subpageTitle, setSubpageTitle] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
     const [subpageRightActions, setSubpageRightActions] = useState<Record<string, ReactNode>>({});
     const [overrideBack, setOverrideBack] = useState<(() => void) | null>(null);
     const [timeAware, setTimeAware] = useState(true);
@@ -375,6 +376,69 @@ export function PhoneSettingsApp({ onClose, onNotice }: SettingsPageProps) {
             <PageShell title={title} onBack={handleBack} rightAction={currentPage !== "main" ? subpageRightActions[currentPage] : undefined} bodyRef={pageBodyRef}>
                 {currentPage === "main" && (
                     <div className="page-menu settings-main-menu">
+                        {/* 搜索框 */}
+                        <div className="relative mb-3 px-1">
+                            <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-[var(--c-input)] border border-[var(--c-border)] text-[var(--c-text)]">
+                                <Search size={16} className="text-[var(--c-icon)] shrink-0" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="搜索设置项（API、预设、世界书、数据管理等）..."
+                                    className="w-full bg-transparent border-none outline-none ts-13 text-[var(--c-text)] placeholder:text-[var(--c-icon)]"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery("")}
+                                        className="ui-bare-btn text-[var(--c-icon)] p-0.5"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* 搜索匹配下拉列表 */}
+                            {searchQuery.trim() && (() => {
+                                const q = searchQuery.trim().toLowerCase();
+                                const results = SETTINGS_MENU.filter(
+                                    item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q)
+                                );
+                                return (
+                                    <div className="absolute left-1 right-1 top-full mt-1.5 z-30 rounded-2xl bg-[var(--c-card)] border border-[var(--c-border)] shadow-xl p-1.5 flex flex-col gap-1 max-h-[300px] overflow-y-auto">
+                                        {results.length > 0 ? (
+                                            results.map(item => {
+                                                const IconComp = item.icon;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCurrentPage(item.id as SubPage);
+                                                            setSearchQuery("");
+                                                        }}
+                                                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[var(--c-input)] transition-colors text-left w-full"
+                                                    >
+                                                        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${item.iconColor}18`, color: item.iconColor }}>
+                                                            <IconComp size={18} />
+                                                        </span>
+                                                        <div className="flex flex-col flex-1 min-w-0">
+                                                            <span className="ts-14 font-medium text-[var(--c-text)]">{item.label}</span>
+                                                            <span className="ts-12 text-[var(--c-icon)] truncate">{item.desc}</span>
+                                                        </div>
+                                                        <ChevronRight size={16} className="text-[var(--c-icon)]" />
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="py-4 text-center ts-13 text-[var(--c-icon)]">
+                                                未找到相关设置项
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
                         {!selfHostedMode && (
                             <button type="button" className="settings-account-card" onClick={() => setAccountSheetOpen(true)}>
                                 <span className="settings-account-avatar"><GlassIcon name="account" /></span>
