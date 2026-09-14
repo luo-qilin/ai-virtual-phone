@@ -6353,7 +6353,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onStopGeneration={clearOfflineGeneration}
 					onInviteOfflineParty={handleInviteOfflineParty}
                     onStartVideoCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVideoCall(true); }}
-                    onStartVoiceCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVideoCall(true); }}
+                    onStartVoiceCall={() => { cancelFollowUp(session.id); setCallInitiator("user"); setIsOfflineCall(true); setShowVoiceCall(true); }}
                 />
             ) : (
             <ChatTextInputBar
