@@ -1862,6 +1862,18 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         }
     }, [session.id]);
 
+    // 监听重新拉起会话的事件，恢复悬浮球/展开通话
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{ sessionId?: string }>).detail;
+            if (detail?.sessionId === session.id) {
+                setCallMinimized(false);
+            }
+        };
+        window.addEventListener("chat-open-session", handler);
+        return () => window.removeEventListener("chat-open-session", handler);
+    }, [session.id]);
+
     const needsInitialScrollRef = useRef(true);
     const prevMsgCountRef = useRef(0);
     const loadingMoreRef = useRef(false);
