@@ -287,7 +287,16 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
         userNameRef.current = ui?.name || "你";
         userAvatarRef.current = ui?.avatarUrl || null;
 
-        messagesRef.current = loadChatMessages(session.id);
+        // Load context
+        if (offlineMode) {
+            const turns = loadChatOfflineTurns(session.id);
+            messagesRef.current = turns.flatMap(t => [
+                { id: `off-u-${t.id}`, role: "user", content: t.userContent, createdAt: t.createdAt } as ChatMessage,
+                { id: `off-a-${t.id}`, role: "assistant", content: t.assistantContent, createdAt: t.createdAt } as ChatMessage
+            ]);
+        } else {
+            messagesRef.current = loadChatMessages(session.id);
+        }
 
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         const initRole = initiator === "character" ? "assistant" : "user";
@@ -295,12 +304,17 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
             const callMsg = initiator === "character"
                 ? `[我向${userNameRef.current}发起了视频通话]`
                 : `[我向${character.name}发起了视频通话]`;
-            const sysMsg = pushChatMessage({
-                sessionId: session.id,
-                role: initRole,
-                content: callMsg,
-            });
-            messagesRef.current = [...messagesRef.current, sysMsg];
+            
+            if (offlineMode) {
+                messagesRef.current = [...messagesRef.current, { id: `sys-${Date.now()}`, role: initRole, content: callMsg, createdAt: new Date().toISOString() } as ChatMessage];
+            } else {
+                const sysMsg = pushChatMessage({
+                    sessionId: session.id,
+                    role: initRole,
+                    content: callMsg,
+                });
+                messagesRef.current = [...messagesRef.current, sysMsg];
+            }
         }
 
         // User-initiated: auto-connect after 3s fake dial
@@ -395,9 +409,14 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
 
     const runConversationTurn = useCallback(async (userText?: string) => {
         if (userText) {
-            const userMsg = pushChatMessage({ sessionId: session.id, role: "user", content: userText });
-            messagesRef.current = [...messagesRef.current, userMsg];
-            setSubtitles(prev => [...prev, { id: userMsg.id, role: "user", text: userText }]);
+            if (offlineMode) {
+                messagesRef.current = [...messagesRef.current, { id: `u-${Date.now()}`, role: "user", content: userText, createdAt: new Date().toISOString() } as ChatMessage];
+                setSubtitles(prev => [...prev, { id: `u-${Date.now()}`, role: "user", text: userText }]);
+            } else {
+                const userMsg = pushChatMessage({ sessionId: session.id, role: "user", content: userText });
+                messagesRef.current = [...messagesRef.current, userMsg];
+                setSubtitles(prev => [...prev, { id: userMsg.id, role: "user", text: userText }]);
+            }
         }
         setCallState("PROCESSING");
         setInterimText("");
@@ -415,6 +434,17 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
             const speechText = stripBilingualForSpeech(displayText);
 
             if (!displayText) { setCallState("IDLE"); return; }
+
+            // Persistence for Offline Mode
+            if (offlineMode && userText) {
+                appendChatOfflineTurn({
+                    sessionId: session.id,
+                    userContent: userText,
+                    assistantContent: displayText,
+                    summary: `面对面视频交流：用户说“${userText.slice(0, 20)}...”，角色回应了关于“${displayText.slice(0, 20)}...”的内容。`,
+                    summaryTag: "面对面",
+                });
+            }
 
             setSubtitles(prev => [...prev, { id: `ai-${Date.now()}`, role: "assistant", text: displayText }]);
             setCallState("AI_SPEAKING");
@@ -440,7 +470,7 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, initiato
                 setCallState("IDLE");
             }
         }
-    }, [session, processAIResponse, captureCameraFrame, playCallAudio]);
+    }, [session, processAIResponse, captureCameraFrame, playCallAudio, offlineMode]);
 
     // ── Auto-listen ────────────────────────────────
 

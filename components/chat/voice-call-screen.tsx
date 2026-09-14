@@ -194,22 +194,36 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, initiato
         const ui = resolveUserIdentity(session.contactId, "chat");
         userNameRef.current = ui?.name || "你";
 
-        // Load existing messages for context
-        messagesRef.current = loadChatMessages(session.id);
+        // Load context
+        if (offlineMode) {
+            const turns = loadChatOfflineTurns(session.id);
+            messagesRef.current = turns.flatMap(t => [
+                { id: `off-u-${t.id}`, role: "user", content: t.userContent, createdAt: t.createdAt } as ChatMessage,
+                { id: `off-a-${t.id}`, role: "assistant", content: t.assistantContent, createdAt: t.createdAt } as ChatMessage
+            ]);
+        } else {
+            messagesRef.current = loadChatMessages(session.id);
+        }
 
-        // Insert system message (skip if already exists from strict mode remount)
+        // Insert system message
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         const initRole = initiator === "character" ? "assistant" : "user";
         if (!lastMsg || !(lastMsg.content.includes("发起了语音通话"))) {
             const callMsg = initiator === "character"
                 ? `[我向${userNameRef.current}发起了语音通话]`
                 : `[我向${character.name}发起了语音通话]`;
-            const sysMsg = pushChatMessage({
-                sessionId: session.id,
-                role: initRole,
-                content: callMsg,
-            });
-            messagesRef.current = [...messagesRef.current, sysMsg];
+            
+            if (offlineMode) {
+                // 线下模式不调用 pushChatMessage 污染私聊，仅维护内存上下文
+                messagesRef.current = [...messagesRef.current, { id: `sys-${Date.now()}`, role: initRole, content: callMsg, createdAt: new Date().toISOString() } as ChatMessage];
+            } else {
+                const sysMsg = pushChatMessage({
+                    sessionId: session.id,
+                    role: initRole,
+                    content: callMsg,
+                });
+                messagesRef.current = [...messagesRef.current, sysMsg];
+            }
         }
 
         // User-initiated: auto-connect after 3s fake dial
@@ -316,33 +330,30 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, initiato
     // ── Full conversation turn ──────────────────────
 
     const runConversationTurn = useCallback(async (userText?: string) => {
-        // 1. Save user message (skip for initial greeting)
+        // 1. Handle user message
         if (userText) {
-            const userMsg = pushChatMessage({
-                sessionId: session.id,
-                role: "user",
-                content: userText,
-            });
-            messagesRef.current = [...messagesRef.current, userMsg];
-
-            // Add user subtitle
-            setSubtitles(prev => [...prev, { id: userMsg.id, role: "user", text: userText }]);
+            if (offlineMode) {
+                messagesRef.current = [...messagesRef.current, { id: `u-${Date.now()}`, role: "user", content: userText, createdAt: new Date().toISOString() } as ChatMessage];
+                setSubtitles(prev => [...prev, { id: `u-${Date.now()}`, role: "user", text: userText }]);
+            } else {
+                const userMsg = pushChatMessage({ sessionId: session.id, role: "user", content: userText });
+                messagesRef.current = [...messagesRef.current, userMsg];
+                setSubtitles(prev => [...prev, { id: userMsg.id, role: "user", text: userText }]);
+            }
         }
 
-        // 2. Switch to PROCESSING
         setCallState("PROCESSING");
         setInterimText("");
 
         try {
-            // 3. Generate AI response
+            // 2. Generate AI response
             const aiResponseText = flattenCompletionResult(await generateChatCompletion(session, messagesRef.current, {
                 appTags: ["chat", "voice"],
             }));
 
-            // Bail if call ended during generation
             if (stateRef.current === "ENDED") return;
 
-            // 4. Process response
+            // 3. Process response
             const { cleanParts } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
@@ -350,6 +361,17 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, initiato
             if (!displayText) {
                 setCallState("IDLE");
                 return;
+            }
+
+            // 4. Persistence for Offline Mode
+            if (offlineMode && userText) {
+                appendChatOfflineTurn({
+                    sessionId: session.id,
+                    userContent: userText,
+                    assistantContent: displayText,
+                    summary: `面对面语音交流：用户说“${userText.slice(0, 20)}...”，角色回应了关于“${displayText.slice(0, 20)}...”的内容。`,
+                    summaryTag: "面对面",
+                });
             }
 
             // 5. Add AI subtitle
