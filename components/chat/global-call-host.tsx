@@ -16,6 +16,12 @@ export function GlobalCallHost() {
     const [call, setCall] = useState<ActiveCallState | null>(null);
     const [minimizedDuration, setMinimizedDuration] = useState(0);
 
+    // 拖拽状态
+    const [ballPos, setBallPos] = useState<{ x: number; y: number } | null>(null);
+    const draggingRef = useRef(false);
+    const dragMovedRef = useRef(false);
+    const dragStartOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
     useEffect(() => {
         const handleStart = (e: Event) => {
             const detail = (e as CustomEvent<GlobalCallStartDetail>).detail;
@@ -117,19 +123,53 @@ export function GlobalCallHost() {
                 )}
             </div>
 
-            {/* 最小化悬浮球：永远渲染在系统最顶层 z-[99999] */}
+            {/* 最小化圆形可拖拽悬浮球：永远渲染在系统最顶层 z-[99999] */}
             {call.minimized && (
                 <div
-                    onClick={(e) => {
+                    onPointerDown={(e) => {
                         e.stopPropagation();
-                        handleExpandCall();
+                        draggingRef.current = true;
+                        dragMovedRef.current = false;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        dragStartOffsetRef.current = {
+                            x: e.clientX - rect.left,
+                            y: e.clientY - rect.top,
+                        };
+                        e.currentTarget.setPointerCapture(e.pointerId);
                     }}
-                    className="fixed right-4 top-20 z-[99999] flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-black/85 text-white backdrop-blur-md border border-white/20 shadow-2xl cursor-pointer select-none"
-                    style={{ visibility: "visible", pointerEvents: "auto" }}
+                    onPointerMove={(e) => {
+                        if (!draggingRef.current) return;
+                        e.stopPropagation();
+                        dragMovedRef.current = true;
+                        const nextX = e.clientX - dragStartOffsetRef.current.x;
+                        const nextY = e.clientY - dragStartOffsetRef.current.y;
+                        const maxX = window.innerWidth - 64;
+                        const maxY = window.innerHeight - 64;
+                        setBallPos({
+                            x: Math.max(8, Math.min(nextX, maxX)),
+                            y: Math.max(8, Math.min(nextY, maxY)),
+                        });
+                    }}
+                    onPointerUp={(e) => {
+                        if (!draggingRef.current) return;
+                        e.stopPropagation();
+                        draggingRef.current = false;
+                        if (!dragMovedRef.current) {
+                            handleExpandCall();
+                        }
+                    }}
+                    className="fixed z-[99999] w-16 h-16 rounded-full bg-black/85 text-white backdrop-blur-md border border-white/20 shadow-2xl cursor-grab active:cursor-grabbing select-none flex flex-col items-center justify-center gap-0.5 p-1 touch-none"
+                    style={{
+                        left: ballPos ? `${ballPos.x}px` : undefined,
+                        top: ballPos ? `${ballPos.y}px` : "80px",
+                        right: ballPos ? undefined : "16px",
+                        visibility: "visible",
+                        pointerEvents: "auto",
+                    }}
                 >
                     {call.type === "video" ? (
-                        /* 视频通话模式：显示角色头像（如无头像显示名字首字） */
-                        <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-white/40 bg-gray-700 flex items-center justify-center">
+                        /* 视频通话模式：显示角色圆形头像 */
+                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-white/40 bg-gray-700 flex items-center justify-center">
                             {call.character.avatar ? (
                                 <img src={call.character.avatar} alt={call.character.name} className="w-full h-full object-cover" />
                             ) : (
@@ -137,15 +177,15 @@ export function GlobalCallHost() {
                             )}
                         </div>
                     ) : (
-                        /* 语音通话模式：显示绿色电话图标与微光呼吸 */
-                        <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 shadow-sm">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                        /* 语音通话模式：显示绿色圆形电话图标 */
+                        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 shadow-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
                                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
                             </svg>
                         </div>
                     )}
 
-                    <span className="ts-13 font-mono font-medium tracking-wide text-emerald-400 whitespace-nowrap">
+                    <span className="ts-10 font-mono font-medium tracking-tight text-emerald-400 whitespace-nowrap">
                         {Math.floor(minimizedDuration / 60).toString().padStart(2, "0")}:
                         {(minimizedDuration % 60).toString().padStart(2, "0")}
                     </span>
