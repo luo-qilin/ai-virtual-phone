@@ -308,22 +308,23 @@ const RICH_PATTERNS: {
         // 2. [入群邀请:群名称:邀请人名称]
         // 3. [入群邀请:群名称]
         // 4. [邀请入群:...] / [群邀请:...] / [邀请加入群聊:...]
-        regex: /\[(?:入群邀请|群邀请|邀请入群|邀请加入群聊)[：:]([^\]：:]+?)(?:[：:]([^\]：:]+?))?(?:[：:]([^\]]+?))?\]/,
+        // 5. [A邀请你加入群聊] / [邀请你加入群聊] / [入群邀请]
+        regex: /\[(?:([^\]：:]+?)邀请你加入了?群聊|(?:入群邀请|群邀请|邀请入群|邀请加入群聊|邀请你加入了?群聊)(?:[：:]([^\]：:]+?))?(?:[：:]([^\]：:]+?))?(?:[：:]([^\]]+?))?)\]/,
         build: (m) => {
-            const part1 = m[1]?.trim() || "";
-            const part2 = m[2]?.trim() || "";
-            const part3 = m[3]?.trim() || "";
+            let inviterName = m[1]?.trim() || "";
+            const part1 = m[2]?.trim() || "";
+            const part2 = m[3]?.trim() || "";
+            const part3 = m[4]?.trim() || "";
             let targetGroupId = "";
             let targetGroupName = part1;
-            let inviterName = "";
 
             if (part3) {
                 targetGroupId = part1;
                 targetGroupName = part2;
-                inviterName = part3;
+                if (!inviterName) inviterName = part3;
             } else if (part2) {
                 targetGroupName = part1;
-                inviterName = part2;
+                if (!inviterName) inviterName = part2;
             }
 
             return {
