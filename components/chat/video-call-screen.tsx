@@ -714,8 +714,12 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
 
             {/* Top info bar */}
             <div className="relative z-10 gcall-topbar gcall-topbar-video">
-                <div className="gcall-topbar-title videocall-name">
-                    {character.name}
+                <div className="gcall-topbar-title videocall-name flex items-center justify-between w-full px-4">
+                    <button onClick={onMinimize} className="ui-bare-btn text-white/70 hover:text-white transition-colors" title="合上">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+                    </button>
+                    <span className="flex-1 text-center font-bold">{character.name}</span>
+                    <div className="w-6" /> {/* spacer */}
                 </div>
                 <div
                     className="gcall-topbar-sub videocall-name"
