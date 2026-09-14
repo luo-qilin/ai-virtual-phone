@@ -4338,17 +4338,19 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         setActiveOfflineTarget(null);
     };
 
-    const handleStartOfflineVideoCall = () => {
+    const handleStartOfflineVideoCall = useCallback(() => {
         if (isOfflineGenerating) return;
+        cancelFollowUp(session.id);
         setCallInitiator("user");
         setShowVideoCall(true);
-    };
+    }, [isOfflineGenerating, session.id]);
 
-    const handleStartOfflineVoiceCall = () => {
+    const handleStartOfflineVoiceCall = useCallback(() => {
         if (isOfflineGenerating) return;
+        cancelFollowUp(session.id);
         setCallInitiator("user");
         setShowVoiceCall(true);
-    };
+    }, [isOfflineGenerating, session.id]);
 
     const handleOfflineRetryFrom = async (turnId: string) => {
         if (isOfflineGenerating) {
