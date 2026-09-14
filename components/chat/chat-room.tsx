@@ -190,6 +190,7 @@ const CHAT_VISUAL_MEDIA_TYPES = new Set([
     "video",
     "quote",
     "media_file",
+    "group_invite",
 ]);
 
 const WEIXIN_CLOUD_DELETE_TIMEOUT_MS = 15000;
@@ -235,6 +236,7 @@ const CHAT_MEDIA_BUBBLE_TYPES = new Set([
     "xiaohongshu_note_share",
     "app_card",
     "media_file",
+    "group_invite",
 ]);
 
 const STANDALONE_CARD_BUBBLE_STYLE = {
