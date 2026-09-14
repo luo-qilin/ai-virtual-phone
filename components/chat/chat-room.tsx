@@ -4235,7 +4235,6 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             return false;
         }
         const currentText = inputText.trim();
-        if (!currentText && !(session.isGroup && session.isSpectator)) return false;
 
         cancelFollowUp(session.id);
         setShowPlusMenu(false);
