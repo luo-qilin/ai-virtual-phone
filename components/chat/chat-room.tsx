@@ -1166,6 +1166,24 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [showVoiceCall, setShowVoiceCall] = useState(false);
     const [showVideoCall, setShowVideoCall] = useState(false);
     const [callMinimized, setCallMinimized] = useState(false);
+    const [minimizedDuration, setMinimizedDuration] = useState(0);
+
+    useEffect(() => {
+        if (!callMinimized || !showVoiceCall) return;
+        const timer = setInterval(() => {
+            setMinimizedDuration(prev => {
+                const next = prev + 1;
+                const el = document.getElementById("ball-timer");
+                if (el) {
+                    const m = Math.floor(next / 60);
+                    const s = next % 60;
+                    el.innerText = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+                }
+                return next;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [callMinimized, showVoiceCall]);
     const [isOfflineCall, setIsOfflineCall] = useState(false);
     const [callInitiator, setCallInitiator] = useState<"user" | "character">("user");
     const [callInitiatorName, setCallInitiatorName] = useState<string>("");
@@ -5461,7 +5479,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         character={character}
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
-                        onMinimize={() => setCallMinimized(true)}
+                        onMinimize={(d) => { setMinimizedDuration(d); setCallMinimized(true); }}
                         onEnd={() => returnFromCall(() => { setShowVoiceCall(false); setCallMinimized(false); })}
                     />
                 </div>
@@ -5475,7 +5493,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         character={character}
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
-                        onMinimize={() => setCallMinimized(true)}
+                        onMinimize={(d) => { setMinimizedDuration(d); setCallMinimized(true); }}
                         onEnd={() => returnFromCall(() => { setShowVideoCall(false); setCallMinimized(false); })}
                     />
                 </div>
@@ -5578,7 +5596,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         ) : (
                             <div className="flex flex-col items-center">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                                <span className="ts-10 font-bold mt-0.5 opacity-90">05:20</span>
+                                <span className="ts-10 font-bold mt-0.5 opacity-90" id="ball-timer">00:00</span>
                             </div>
                         )}
                     </button>

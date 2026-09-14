@@ -45,7 +45,7 @@ type VoiceCallScreenProps = {
     character: Character;
     onEnd: () => void;
     onConnect?: () => void;
-    onMinimize?: () => void;
+    onMinimize?: (duration: number) => void;
     initiator?: "user" | "character";
     offlineMode?: boolean;
 };
