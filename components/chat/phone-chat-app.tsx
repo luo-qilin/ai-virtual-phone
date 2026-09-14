@@ -300,7 +300,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
 
             {/* Chat Rooms — all visited sessions stay mounted, only active one is visible */}
             {[...visitedSessions.values()].map(sess => (
-                <div key={sess.id} style={{ display: activeSession?.id === sess.id ? undefined : 'none', pointerEvents: activeSession?.id === sess.id ? 'auto' : 'none' }} className="chat-room-layer absolute inset-0">
+                <div key={sess.id} style={{ display: activeSession?.id === sess.id ? undefined : 'block', visibility: activeSession?.id === sess.id ? 'visible' : 'hidden', pointerEvents: activeSession?.id === sess.id ? 'auto' : 'none' }} className="chat-room-layer absolute inset-0">
                     <ChatRoom
                         session={sess}
                         onBack={() => setActiveSession(null)}
