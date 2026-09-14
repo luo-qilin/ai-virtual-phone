@@ -6350,8 +6350,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
 					onInviteOfflineParty={handleInviteOfflineParty}
-                    onStartVideoCall={() => { setIsOfflineCall(true); handleStartSystemCall("video"); }}
-                    onStartVoiceCall={() => { setIsOfflineCall(true); handleStartSystemCall("voice"); }}
+                    onStartVideoCall={() => { setIsOfflineCall(true); setCallInitiator("user"); setShowVideoCall(true); }}
+                    onStartVoiceCall={() => { setIsOfflineCall(true); setCallInitiator("user"); setShowVoiceCall(true); }}
                 />
             ) : (
             <ChatTextInputBar
@@ -6380,8 +6380,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
 	                onCloseTheaterMode={closeTheaterMode}
 	                onOpenRichModal={(modal) => { setShowPlusMenu(false); setRichModal(modal); }}
                 onOpenCustomPlusAction={handleOpenCustomPlusAction}
-                onStartVideoCall={() => { setIsOfflineCall(false); handleStartSystemCall("video"); }}
-                onStartVoiceCall={() => { setIsOfflineCall(false); handleStartSystemCall("voice"); }}
+                onStartVideoCall={() => { setIsOfflineCall(false); setCallInitiator("user"); setShowVideoCall(true); }}
+                onStartVoiceCall={() => { setIsOfflineCall(false); setCallInitiator("user"); setShowVoiceCall(true); }}
                 onSendText={handleSendText}
                 onStopGeneration={clearStuckGeneration}
                 onTriggerAIResponse={triggerAIResponse}
