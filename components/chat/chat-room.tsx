@@ -37,6 +37,7 @@ import { CustomAppRunner } from "@/components/app-market/custom-app-runner";
 import { CustomAppForegroundBoundary } from "@/components/app-market/custom-app-failure";
 
 import { ChatSettingsPanel } from "./chat-settings-panel";
+import { dispatchStartGlobalCall } from "@/lib/global-call-events";
 import { VoiceCallScreen } from "./voice-call-screen";
 import { VideoCallScreen } from "./video-call-screen";
 import { GroupCallScreen } from "./group-call-screen";
@@ -6430,8 +6431,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     onSendText={handleOfflineSend}
                     onStopGeneration={clearOfflineGeneration}
 					onInviteOfflineParty={handleInviteOfflineParty}
-                    onStartVideoCall={() => { setIsOfflineCall(true); setCallInitiator("user"); setShowVideoCall(true); }}
-                    onStartVoiceCall={() => { setIsOfflineCall(true); setCallInitiator("user"); setShowVoiceCall(true); }}
+                    onStartVideoCall={() => { if (character) dispatchStartGlobalCall({ session, character, type: "video", initiator: "user", offlineMode: true }); }}
+                    onStartVoiceCall={() => { if (character) dispatchStartGlobalCall({ session, character, type: "voice", initiator: "user", offlineMode: true }); }}
                 />
             ) : (
             <ChatTextInputBar
@@ -6460,8 +6461,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
 	                onCloseTheaterMode={closeTheaterMode}
 	                onOpenRichModal={(modal) => { setShowPlusMenu(false); setRichModal(modal); }}
                 onOpenCustomPlusAction={handleOpenCustomPlusAction}
-                onStartVideoCall={() => { setIsOfflineCall(false); setCallInitiator("user"); setShowVideoCall(true); }}
-                onStartVoiceCall={() => { setIsOfflineCall(false); setCallInitiator("user"); setShowVoiceCall(true); }}
+                onStartVideoCall={() => { if (character) dispatchStartGlobalCall({ session, character, type: "video", initiator: "user", offlineMode: false }); }}
+                onStartVoiceCall={() => { if (character) dispatchStartGlobalCall({ session, character, type: "voice", initiator: "user", offlineMode: false }); }}
                 onSendText={handleSendText}
                 onStopGeneration={clearStuckGeneration}
                 onTriggerAIResponse={triggerAIResponse}

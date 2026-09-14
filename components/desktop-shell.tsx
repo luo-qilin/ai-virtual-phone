@@ -33,6 +33,7 @@ import MapApp from "@/components/map/map-app";
 import { DwellingApp } from "@/components/dwelling/dwelling-app";
 import { MascotFloat } from "@/components/mascot/mascot-float";
 import { MascotPreviewHost } from "@/components/mascot/mascot-preview-host";
+import { GlobalCallHost } from "@/components/chat/global-call-host";
 import { useMusicControlsOptional } from "@/lib/music-context";
 import { PhoneResourcesApp, type ResourceSubPage } from "@/components/phone-resources-app";
 import { CheckPhoneApp } from "@/components/checkphone/checkphone-app";
@@ -5014,6 +5015,8 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#121110;color:rgb
               <MascotFloat />
               {/* 预览弹窗宿主：独立于桌宠的展开/收起状态，否则桌宠收成小球时弹不出来 */}
               <MascotPreviewHost />
+              {/* 全局音视频通话宿主：无论在任何 APP/页面/聊天室内外，通话与悬浮球均由该宿主保持生命周期 */}
+              <GlobalCallHost />
 
               {/* Widget Picker Bottom Sheet */}
               {showWidgetPicker && (
