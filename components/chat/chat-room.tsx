@@ -1165,6 +1165,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     const [showSettings, setShowSettings] = useState(false);
     const [showVoiceCall, setShowVoiceCall] = useState(false);
     const [showVideoCall, setShowVideoCall] = useState(false);
+    const [callMinimized, setCallMinimized] = useState(false);
     const [isOfflineCall, setIsOfflineCall] = useState(false);
     const [callInitiator, setCallInitiator] = useState<"user" | "character">("user");
     const [callInitiatorName, setCallInitiatorName] = useState<string>("");
@@ -5466,13 +5467,16 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         }
         if (character) {
             return (
-                <VoiceCallScreen
-                    session={session}
-                    character={character}
-                    initiator={callInitiator}
-                    offlineMode={isOfflineCall}
-                    onEnd={() => returnFromCall(() => setShowVoiceCall(false))}
-                />
+                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
+                    <VoiceCallScreen
+                        session={session}
+                        character={character}
+                        initiator={callInitiator}
+                        offlineMode={isOfflineCall}
+                        onMinimize={() => setCallMinimized(true)}
+                        onEnd={() => returnFromCall(() => { setShowVoiceCall(false); setCallMinimized(false); })}
+                    />
+                </div>
             );
         }
     }
@@ -5492,13 +5496,16 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         }
         if (character) {
             return (
-                <VideoCallScreen
-                    session={session}
-                    character={character}
-                    initiator={callInitiator}
-                    offlineMode={isOfflineCall}
-                    onEnd={() => returnFromCall(() => setShowVideoCall(false))}
-                />
+                <div className={`fixed inset-0 z-[100] transition-transform duration-300 ${callMinimized ? "translate-y-full pointer-events-none" : "translate-y-0"}`}>
+                    <VideoCallScreen
+                        session={session}
+                        character={character}
+                        initiator={callInitiator}
+                        offlineMode={isOfflineCall}
+                        onMinimize={() => setCallMinimized(true)}
+                        onEnd={() => returnFromCall(() => { setShowVideoCall(false); setCallMinimized(false); })}
+                    />
+                </div>
             );
         }
     }
@@ -5577,6 +5584,32 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 slotProps={{ sessionId: session.id, isGroup: !!session.isGroup }}
                 className="chat-plugin-header chat-room-main-pane"
             />
+
+            {/* 通话悬浮球 */}
+            {callMinimized && (showVoiceCall || showVideoCall) && (
+                <div 
+                    className="fixed bottom-24 right-4 z-[110] flex flex-col items-end gap-2"
+                >
+                    <button 
+                        onClick={() => setCallMinimized(false)}
+                        className="w-14 h-14 rounded-full bg-[var(--c-accent)] shadow-lg flex items-center justify-center text-white overflow-hidden group border-2 border-white/20 active:scale-95 transition-all"
+                    >
+                        {showVideoCall ? (
+                            character?.avatar ? (
+                                <img src={character.avatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            )
+                        ) : (
+                            <div className="flex flex-col items-center">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                                <span className="ts-10 font-bold mt-0.5 opacity-90">05:20</span>
+                            </div>
+                        )}
+                    </button>
+                    <div className="bg-black/60 backdrop-blur px-2 py-0.5 rounded-full text-[10px] text-white/80">点击恢复通话</div>
+                </div>
+            )}
 
             {/* Message List */}
             <div

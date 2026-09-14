@@ -45,6 +45,7 @@ type VideoCallScreenProps = {
     character: Character;
     onEnd: () => void;
     onConnect?: () => void;
+    onMinimize?: () => void;
     initiator?: "user" | "character";
     offlineMode?: boolean;
 };
@@ -58,7 +59,7 @@ function stripBilingualForSpeech(text: string): string {
 
 // ── Component ───────────────────────────────────────
 
-export function VideoCallScreen({ session, character, onEnd, onConnect, initiator = "user", offlineMode }: VideoCallScreenProps) {
+export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimize, initiator = "user", offlineMode }: VideoCallScreenProps) {
     // 同 voice-call-screen：iOS 保留 Web Speech 免提 + Web Audio 播放；
     // 其余设备改按住说话 + 云端转写，播放走媒体元素。没配识别时回落旧行为。
     const iosDeviceRef = useRef(isIOSDevice());

@@ -45,6 +45,7 @@ type VoiceCallScreenProps = {
     character: Character;
     onEnd: () => void;
     onConnect?: () => void;
+    onMinimize?: () => void;
     initiator?: "user" | "character";
     offlineMode?: boolean;
 };
@@ -58,7 +59,7 @@ function stripBilingualForSpeech(text: string): string {
 
 // ── Component ───────────────────────────────────────
 
-export function VoiceCallScreen({ session, character, onEnd, onConnect, initiator = "user", offlineMode }: VoiceCallScreenProps) {
+export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimize, initiator = "user", offlineMode }: VoiceCallScreenProps) {
     // iOS 保留 Web Speech 免提 + Web Audio 播放（麦克风会话共存的老方案）；
     // 其余设备改「按住说话 + 云端转写」，播放走媒体元素（音量键可控、无静音拨键坑）。
     // 没配 OpenAI 兼容识别时回落旧行为（安卓=文字输入）。
