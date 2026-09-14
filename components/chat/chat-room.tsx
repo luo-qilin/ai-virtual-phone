@@ -5527,6 +5527,22 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     return (
         <div ref={wrapperRef} className={`session-${session.id} chat-room-wrapper page-shell inset-0 flex flex-col z-20`} style={chatRoomBackgroundStyle} {...(bgLoading ? { "data-loading": "" } : {})} {...(bgImageResolved ? { "data-has-bg-image": "" } : {})} {...(showSettings ? { "data-settings-open": "" } : {})}>
             {renderCallOverlay()}
+            {/* 最小化悬浮球 */}
+            {callMinimized && (showVoiceCall || showVideoCall) && character && (
+                <div
+                    onClick={() => setCallMinimized(false)}
+                    className="fixed right-4 top-20 z-[120] flex items-center gap-2 px-3 py-2 rounded-full bg-black/75 text-white backdrop-blur border border-white/20 shadow-lg cursor-pointer animate-pulse"
+                >
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
+                    <span className="ts-12 font-medium">
+                        {showVideoCall ? "视频通话" : "语音通话"}{" "}
+                        <span id="ball-timer">
+                            {Math.floor(minimizedDuration / 60).toString().padStart(2, "0")}:
+                            {(minimizedDuration % 60).toString().padStart(2, "0")}
+                        </span>
+                    </span>
+                </div>
+            )}
             {/* Custom CSS Injection for this session — scoped to prevent leaking */}
             {liveCSS && (
                 <SessionCustomCSS css={liveCSS} scope={`.session-${session.id}`} />
