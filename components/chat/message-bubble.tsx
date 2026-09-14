@@ -2352,30 +2352,47 @@ function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (up
         if (onUpdate) onUpdate({ ...msg, mediaData: updatedData });
 
         if (accepted) {
-            // 如果提供了目标群ID，直接查找并加入；没有则按群名查找
+            // 如果提供了目标群ID，直接查找并加入；没有则按群名查找，若依然没有则自动新建该群
             const sessions = loadChatSessions();
             let targetSession = targetGroupId ? sessions.find(s => s.id === targetGroupId) : null;
             if (!targetSession) {
                 targetSession = sessions.find(s => s.isGroup && (s.groupName === targetGroupName || s.alias === targetGroupName));
             }
-            if (targetSession) {
-                // 解除围观状态
+            if (!targetSession) {
+                // 查找邀请者对应的角色 ID，若没有则加入
+                const chars = loadCharacters();
+                const inviterChar = chars.find(c => c.name === inviterName);
+                const participantIds = inviterChar ? [inviterChar.id] : [];
+                targetSession = {
+                    id: targetGroupId || `group-${Date.now()}`,
+                    contactId: inviterChar?.id || "",
+                    isGroup: true,
+                    groupName: targetGroupName,
+                    participantIds,
+                    isSpectator: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+                sessions.unshift(targetSession);
+                saveChatSessions(sessions);
+            } else {
                 targetSession.isSpectator = false;
-                const idx = sessions.findIndex(s => s.id === targetSession!.id);
+                const idx = sessions.findIndex(s => s.id === targetSession.id);
                 if (idx !== -1) {
                     sessions[idx] = { ...sessions[idx], isSpectator: false };
                     saveChatSessions(sessions);
                 }
-                // 在对应群聊中添加进群通知
-                pushChatMessage({
-                    sessionId: targetSession.id,
-                    role: "user",
-                    content: `${inviterName}邀请你加入了群聊`,
-                    mediaType: "group_admin_notice",
-                    mediaData: { adminAction: "invite", adminActorName: inviterName, adminTargetName: "你" },
-                });
-                window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: targetSession.id } }));
             }
+
+            // 在对应群聊中添加进群通知
+            pushChatMessage({
+                sessionId: targetSession.id,
+                role: "user",
+                content: `${inviterName}邀请你加入了群聊`,
+                mediaType: "group_admin_notice",
+                mediaData: { adminAction: "invite", adminActorName: inviterName, adminTargetName: "你" },
+            });
+            window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: targetSession.id } }));
         }
     };
 
