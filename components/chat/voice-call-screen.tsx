@@ -339,7 +339,44 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
                return { cleanParts, stateValues, shouldHangup };
     }, [session.id, session.contactId]);
+const endCall = useCallback((by: "user" | "assistant") => {
+        if (stateRef.current === "ENDED") return;
+        setCallState("ENDED");
+        if (sttRef.current) {
+            sttRef.current.abort();
+            sttRef.current = null;
+        }
+        if (audioAbortRef.current) {
+            audioAbortRef.current();
+            audioAbortRef.current = null;
+        }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (offlineMode) {
+            appendChatOfflineTurn({
+                sessionId: session.id,
+                userContent: by === "assistant"
+                    ? `[${character.name}结束了面对面语音聊天]`
+                    : `[发起并结束了面对面语音聊天]`,
+                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
+                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
+                summaryTag: "面对面",
+            });
+        } else {
+            const endMsg = pushChatMessage({
+                sessionId: session.id,
+                role: by,
+                content: `[我挂断了语音通话]`,
+                mediaData: { callDuration: formatTime(callDuration) },
+                ...(by === "assistant"
+                    ? { senderCharacterId: session.contactId, senderName: character.name }
+                    : {}),
+            });
+            messagesRef.current = [...messagesRef.current, endMsg];
+        }
+        setTimeout(() => onEnd(), 1500);
+    }, [session.id, session.contactId, callDuration, onEnd, character.name, offlineMode]);
 
+    const handleHangup = useCallback(() => endCall("user"), [endCall]);
     // ── Full conversation turn ──────────────────────
 
     const runConversationTurn = useCallback(async (userText?: string) => {
@@ -588,44 +625,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── Hangup ──────────────────────────────────────
 
-      const endCall = useCallback((by: "user" | "assistant") => {
-        if (stateRef.current === "ENDED") return;
-        setCallState("ENDED");
-        if (sttRef.current) {
-            sttRef.current.abort();
-            sttRef.current = null;
-        }
-        if (audioAbortRef.current) {
-            audioAbortRef.current();
-            audioAbortRef.current = null;
-        }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        if (offlineMode) {
-            appendChatOfflineTurn({
-                sessionId: session.id,
-                userContent: by === "assistant"
-                    ? `[${character.name}结束了面对面语音聊天]`
-                    : `[发起并结束了面对面语音聊天]`,
-                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
-                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
-                summaryTag: "面对面",
-            });
-        } else {
-            const endMsg = pushChatMessage({
-                sessionId: session.id,
-                role: by,
-                content: `[我挂断了语音通话]`,
-                mediaData: { callDuration: formatTime(callDuration) },
-                ...(by === "assistant"
-                    ? { senderCharacterId: session.contactId, senderName: character.name }
-                    : {}),
-            });
-            messagesRef.current = [...messagesRef.current, endMsg];
-        }
-        setTimeout(() => onEnd(), 1500);
-    }, [session.id, session.contactId, callDuration, onEnd, character.name, offlineMode]);
-
-    const handleHangup = useCallback(() => endCall("user"), [endCall]);
+      
     // ── Render ──────────────────────────────────────
 
     return (
