@@ -382,29 +382,31 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
             !p.mediaType || !["voice_call", "video_call", "poke", "accept_red_packet", "decline_red_packet", "accept_transfer", "decline_transfer", "accept_payment_request", "decline_payment_request"].includes(p.mediaType)
         );
 
-        if (chatParts.length === 0 && (statusPanel || innerMonologue)) {
-            const aiMsg = pushChatMessage({
-                sessionId: session.id, role: "assistant", content: "",
-                statusPanel,
-                statusRegionMode,
-                innerMonologue, stateValues: stateValues.length > 0 ? stateValues : undefined,
-                freshStateValues,
-            });
-            messagesRef.current = [...messagesRef.current, aiMsg];
-        } else {
-            const newMsgs = chatParts.map((part, idx) =>
-                pushChatMessage({
-                    sessionId: session.id, role: "assistant", content: part.content,
-                    mediaType: part.mediaType,
-                    mediaData: part.mediaData,
-                    statusPanel: idx === 0 && statusPanel ? statusPanel : undefined,
-                    statusRegionMode: idx === 0 && statusPanel ? statusRegionMode : undefined,
-                    innerMonologue: idx === 0 && innerMonologue ? innerMonologue : undefined,
-                    stateValues: idx === 0 && stateValues.length > 0 ? stateValues : undefined,
-                    freshStateValues: idx === 0 ? freshStateValues : undefined,
-                })
-            );
-            messagesRef.current = [...messagesRef.current, ...newMsgs];
+        if (!offlineMode) {
+            if (chatParts.length === 0 && (statusPanel || innerMonologue)) {
+                const aiMsg = pushChatMessage({
+                    sessionId: session.id, role: "assistant", content: "",
+                    statusPanel,
+                    statusRegionMode,
+                    innerMonologue, stateValues: stateValues.length > 0 ? stateValues : undefined,
+                    freshStateValues,
+                });
+                messagesRef.current = [...messagesRef.current, aiMsg];
+            } else {
+                const newMsgs = chatParts.map((part, idx) =>
+                    pushChatMessage({
+                        sessionId: session.id, role: "assistant", content: part.content,
+                        mediaType: part.mediaType,
+                        mediaData: part.mediaData,
+                        statusPanel: idx === 0 && statusPanel ? statusPanel : undefined,
+                        statusRegionMode: idx === 0 && statusPanel ? statusRegionMode : undefined,
+                        innerMonologue: idx === 0 && innerMonologue ? innerMonologue : undefined,
+                        stateValues: idx === 0 && stateValues.length > 0 ? stateValues : undefined,
+                        freshStateValues: idx === 0 ? freshStateValues : undefined,
+                    })
+                );
+                messagesRef.current = [...messagesRef.current, ...newMsgs];
+            }
         }
 
         const cleanParts = chatParts

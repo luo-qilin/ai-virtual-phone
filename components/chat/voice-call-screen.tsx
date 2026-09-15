@@ -296,35 +296,37 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
             !p.mediaType || !["voice_call", "video_call", "poke", "accept_red_packet", "decline_red_packet", "accept_transfer", "decline_transfer", "accept_payment_request", "decline_payment_request"].includes(p.mediaType)
         );
 
-        // Save messages to storage
-        if (chatParts.length === 0 && (statusPanel || innerMonologue)) {
-            const aiMsg = pushChatMessage({
-                sessionId: session.id,
-                role: "assistant",
-                content: "",
-                statusPanel,
-                statusRegionMode,
-                innerMonologue,
-                stateValues: stateValues.length > 0 ? stateValues : undefined,
-                freshStateValues,
-            });
-            messagesRef.current = [...messagesRef.current, aiMsg];
-        } else {
-            const newMsgs = chatParts.map((part, idx) =>
-                pushChatMessage({
+        // Save messages to storage (线下模式下绝不写入线上消息库，仅保留在内存及线下 turn 中)
+        if (!offlineMode) {
+            if (chatParts.length === 0 && (statusPanel || innerMonologue)) {
+                const aiMsg = pushChatMessage({
                     sessionId: session.id,
                     role: "assistant",
-                    content: part.content,
-                    mediaType: part.mediaType,
-                    mediaData: part.mediaData,
-                    statusPanel: idx === 0 && statusPanel ? statusPanel : undefined,
-                    statusRegionMode: idx === 0 && statusPanel ? statusRegionMode : undefined,
-                    innerMonologue: idx === 0 && innerMonologue ? innerMonologue : undefined,
-                    stateValues: idx === 0 && stateValues.length > 0 ? stateValues : undefined,
-                    freshStateValues: idx === 0 ? freshStateValues : undefined,
-                })
-            );
-            messagesRef.current = [...messagesRef.current, ...newMsgs];
+                    content: "",
+                    statusPanel,
+                    statusRegionMode,
+                    innerMonologue,
+                    stateValues: stateValues.length > 0 ? stateValues : undefined,
+                    freshStateValues,
+                });
+                messagesRef.current = [...messagesRef.current, aiMsg];
+            } else {
+                const newMsgs = chatParts.map((part, idx) =>
+                    pushChatMessage({
+                        sessionId: session.id,
+                        role: "assistant",
+                        content: part.content,
+                        mediaType: part.mediaType,
+                        mediaData: part.mediaData,
+                        statusPanel: idx === 0 && statusPanel ? statusPanel : undefined,
+                        statusRegionMode: idx === 0 && statusPanel ? statusRegionMode : undefined,
+                        innerMonologue: idx === 0 && innerMonologue ? innerMonologue : undefined,
+                        stateValues: idx === 0 && stateValues.length > 0 ? stateValues : undefined,
+                        freshStateValues: idx === 0 ? freshStateValues : undefined,
+                    })
+                );
+                messagesRef.current = [...messagesRef.current, ...newMsgs];
+            }
         }
 
         // Return clean text parts for TTS (exclude rich media content)
