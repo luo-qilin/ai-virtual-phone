@@ -1012,6 +1012,10 @@ export function saveChatContacts(contacts: ChatContact[]) {
 }
 
 export function addChatContact(characterId: string): ChatContact | null {
+    // 禁止添加用户代理角色（用户身份导入 Target Archives 的角色）
+    const targetChar = loadCharacters().find(c => c.id === characterId);
+    if (targetChar?.isUserProxy) return null;
+
     // 任何一条"重新加上好友"的路径都会走到这里（通过好友申请、搜索添加、
     // 后台引擎重新建联系），统一在这里解除删除状态，不会漏。
     unmarkContactRemoved(characterId);

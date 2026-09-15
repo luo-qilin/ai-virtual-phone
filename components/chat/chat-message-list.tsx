@@ -106,6 +106,7 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResult, setSearchResult] = useState<Character | null | undefined>(undefined);
     // undefined: not searched yet, null: searched and not found, Character: found
+    const [userProxyNotice, setUserProxyNotice] = useState<string | null>(null);
 
     const [isSendingRequest, setIsSendingRequest] = useState(false);
     const [greetingText, setGreetingText] = useState("");
@@ -241,6 +242,7 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                         setIsSearchModalOpen(true);
                                         setSearchQuery("");
                                         setSearchResult(undefined);
+                                        setUserProxyNotice(null);
 
                                         setIsSendingRequest(false);
                                         setGreetingText(identity?.name ? `我是${identity.name}` : "你好");
@@ -351,11 +353,12 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                         onChange={(e) => {
                                             setSearchQuery(e.target.value);
                                             setSearchResult(undefined);
+                                            setUserProxyNotice(null);
                                         }}
                                         className="ui-input ui-input-inline"
                                     />
                                     {searchQuery && (
-                                        <button onClick={() => setSearchQuery("")} className="ui-bare-btn text-[var(--c-icon)]">
+                                        <button onClick={() => { setSearchQuery(""); setUserProxyNotice(null); }} className="ui-bare-btn text-[var(--c-icon)]">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" /></svg>
                                         </button>
                                     )}
@@ -367,6 +370,12 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                         onClick={() => {
                                             const chars = loadCharacters();
                                             const found = chars.find(c => c.wechatID === searchQuery.trim() || c.id === searchQuery.trim());
+                                            if (found?.isUserProxy) {
+                                                setUserProxyNotice("你不能添加自己到通讯录");
+                                                setSearchResult(found);
+                                                return;
+                                            }
+                                            setUserProxyNotice(null);
                                             setSearchResult(found || null);
                                         }}
                                     >
@@ -415,6 +424,13 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                                 key={c.id}
                                                 className="menu-item"
                                                 onClick={() => {
+                                                    if (c.isUserProxy) {
+                                                        setUserProxyNotice("你不能添加自己到通讯录");
+                                                        setSearchQuery(c.wechatID?.trim() || c.id);
+                                                        setSearchResult(c);
+                                                        return;
+                                                    }
+                                                    setUserProxyNotice(null);
                                                     setSearchQuery(c.wechatID?.trim() || c.id);
                                                     setSearchResult(undefined);
                                                 }}
@@ -464,8 +480,19 @@ export function ChatMessageList({ onCloseApp, activeSession, onSelectSession, on
                                     </div>
                                 </div>
                             </div>
+                            {userProxyNotice && (
+                                <div className="ts-13 text-center py-2 px-3 rounded-lg bg-[var(--c-danger,#ef4444)]/10 text-[var(--c-danger,#ef4444)] font-medium">
+                                    {userProxyNotice}
+                                </div>
+                            )}
                             <button
-                                onClick={() => setIsSendingRequest(true)}
+                                onClick={() => {
+                                    if (searchResult.isUserProxy) {
+                                        setUserProxyNotice("你不能添加自己到通讯录");
+                                        return;
+                                    }
+                                    setIsSendingRequest(true);
+                                }}
                                 className="ui-btn ui-btn-success w-full"
                             >
                                 添加到通讯录

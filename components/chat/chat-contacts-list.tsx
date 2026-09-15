@@ -52,6 +52,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
     const [addResult, setAddResult] = useState<Character | null | undefined>(undefined);
     const [isSendingAdd, setIsSendingAdd] = useState(false);
     const [greetingText, setGreetingText] = useState("");
+    const [userProxyNotice, setUserProxyNotice] = useState<string | null>(null);
     // 添加页是否由名片打开：返回时应回到原聊天室而非联系人列表
     const addFromCardRef = useRef(false);
     const mascotSettings = useSyncExternalStore(subscribeMascotSettings, getMascotSettingsSnapshot, getMascotSettingsSnapshot);
@@ -82,6 +83,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
         setIsAddFriendOpen(true);
         setAddQuery(found.wechatID || found.id);
         setAddResult(found);
+        setUserProxyNotice(found.isUserProxy ? "你不能添加自己到通讯录" : null);
         setIsSendingAdd(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pendingAddContactId]);
@@ -196,6 +198,7 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                             setIsAddFriendOpen(true);
                             setAddQuery("");
                             setAddResult(undefined);
+                            setUserProxyNotice(null);
                             setIsSendingAdd(false);
                             setGreetingText(identity?.name ? `我是${identity.name}` : "你好");
                         }}
@@ -439,11 +442,11 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                                         autoFocus
                                         placeholder="微信号/手机号"
                                         value={addQuery}
-                                        onChange={(e) => { setAddQuery(e.target.value); setAddResult(undefined); }}
+                                        onChange={(e) => { setAddQuery(e.target.value); setAddResult(undefined); setUserProxyNotice(null); }}
                                         className="ui-input ui-input-inline"
                                     />
                                     {addQuery && (
-                                        <button onClick={() => setAddQuery("")} className="ui-bare-btn text-[var(--c-icon)]">
+                                        <button onClick={() => { setAddQuery(""); setUserProxyNotice(null); }} className="ui-bare-btn text-[var(--c-icon)]">
                                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z" /></svg>
                                         </button>
                                     )}
@@ -453,6 +456,12 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                                         className="menu-item"
                                         onClick={() => {
                                             const found = chars.find(c => c.wechatID === addQuery.trim() || c.id === addQuery.trim());
+                                            if (found?.isUserProxy) {
+                                                setUserProxyNotice("你不能添加自己到通讯录");
+                                                setAddResult(found);
+                                                return;
+                                            }
+                                            setUserProxyNotice(null);
                                             setAddResult(found || null);
                                         }}
                                     >
@@ -515,7 +524,23 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => setIsSendingAdd(true)} className="ui-btn ui-btn-success w-full">添加到通讯录</button>
+                            {userProxyNotice && (
+                                <div className="ts-13 text-center py-2 px-3 rounded-lg bg-[var(--c-danger,#ef4444)]/10 text-[var(--c-danger,#ef4444)] font-medium">
+                                    {userProxyNotice}
+                                </div>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (addResult.isUserProxy) {
+                                        setUserProxyNotice("你不能添加自己到通讯录");
+                                        return;
+                                    }
+                                    setIsSendingAdd(true);
+                                }}
+                                className="ui-btn ui-btn-success w-full"
+                            >
+                                添加到通讯录
+                            </button>
                         </div>
                     )}
                     {isSendingAdd && addResult && (

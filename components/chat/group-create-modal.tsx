@@ -24,7 +24,7 @@ export function GroupCreateModal({ onClose, onCreate }: GroupCreateModalProps) {
 
     const enriched = contacts
         .map(c => ({ ...c, char: chars.find(ch => ch.id === c.characterId) }))
-        .filter(c => c.char) as (typeof contacts[number] & { char: Character })[];
+        .filter(c => c.char && !c.char.isUserProxy) as (typeof contacts[number] & { char: Character })[];
 
     const toggle = (id: string) => {
         setSelectedIds(prev => {
