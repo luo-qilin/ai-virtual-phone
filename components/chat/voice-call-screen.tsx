@@ -280,11 +280,14 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── AI response processing (same logic as chat-room) ──
 
-    const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[] } => {
+       const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[]; shouldHangup: boolean } => {
         // Use shared parseAIResponse for full rich media support (stickers, quotes, etc.)
         const previousState = getLatestCharacterStateValues(session.contactId);
 
-        const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+              const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+        const shouldHangup = parts.some(p => p.mediaData?.label === "hangup");
+
+        // 自定义状态栏渲染戳
 
         // 自定义状态栏渲染戳：不盖的话 custom 模式下 [状态栏] 原文按 markdown 渲染，看着像掉格式
         const statusRegionMode = statusPanel && isCustomStatusRegionActive(getStatusRegionConfig(session.id))
@@ -334,9 +337,46 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
             .filter(p => !p.mediaType && p.content.trim())
             .map(p => p.content);
 
-        return { cleanParts, stateValues };
+               return { cleanParts, stateValues, shouldHangup };
     }, [session.id, session.contactId]);
+const endCall = useCallback((by: "user" | "assistant") => {
+        if (stateRef.current === "ENDED") return;
+        setCallState("ENDED");
+        if (sttRef.current) {
+            sttRef.current.abort();
+            sttRef.current = null;
+        }
+        if (audioAbortRef.current) {
+            audioAbortRef.current();
+            audioAbortRef.current = null;
+        }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (offlineMode) {
+            appendChatOfflineTurn({
+                sessionId: session.id,
+                userContent: by === "assistant"
+                    ? `[${character.name}结束了面对面语音聊天]`
+                    : `[发起并结束了面对面语音聊天]`,
+                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
+                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
+                summaryTag: "面对面",
+            });
+        } else {
+            const endMsg = pushChatMessage({
+                sessionId: session.id,
+                role: by,
+                content: `[我挂断了语音通话]`,
+                mediaData: { callDuration: formatTime(callDuration) },
+                ...(by === "assistant"
+                    ? { senderCharacterId: session.contactId, senderName: character.name }
+                    : {}),
+            });
+            messagesRef.current = [...messagesRef.current, endMsg];
+        }
+        setTimeout(() => onEnd(), 1500);
+    }, [session.id, session.contactId, callDuration, onEnd, character.name, offlineMode]);
 
+    const handleHangup = useCallback(() => endCall("user"), [endCall]);
     // ── Full conversation turn ──────────────────────
 
     const runConversationTurn = useCallback(async (userText?: string) => {
@@ -364,7 +404,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
             if (stateRef.current === "ENDED") return;
 
             // 3. Process response
-            const { cleanParts } = processAIResponse(aiResponseText);
+                        const { cleanParts } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
 
@@ -408,9 +448,12 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
                 }
             }
 
-            if (stateRef.current !== "ENDED") {
-                setCallState("IDLE");
+                      if (stateRef.current === "ENDED") return;
+            if (shouldHangup) {
+                endCall("assistant");
+                return;
             }
+            setCallState("IDLE");
         } catch (error: any) {
             console.error("[VoiceCall] Error:", error);
             if (stateRef.current !== "ENDED") {
@@ -422,8 +465,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
                 setCallState("IDLE");
             }
         }
-    }, [session, processAIResponse, playCallAudio]);
-
+      }, [session, processAIResponse, playCallAudio, endCall, offlineMode]);
     // ── Auto-listen: 进入 IDLE 自动开始监听 ────────
 
     const startListening = useCallback(() => {
@@ -585,48 +627,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── Hangup ──────────────────────────────────────
 
-    const handleHangup = useCallback(() => {
-        setCallState("ENDED");
-
-        // Stop any ongoing STT
-        if (sttRef.current) {
-            sttRef.current.abort();
-            sttRef.current = null;
-        }
-
-        // Stop any ongoing audio playback
-        if (audioAbortRef.current) {
-            audioAbortRef.current();
-            audioAbortRef.current = null;
-        }
-
-        // Stop browser TTS
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-        }
-
-        if (offlineMode) {
-            appendChatOfflineTurn({
-                sessionId: session.id,
-                userContent: `[发起并结束了面对面语音聊天]`,
-                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
-                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
-                summaryTag: "面对面",
-            });
-        } else {
-            const endMsg = pushChatMessage({
-                sessionId: session.id,
-                role: "user",
-                content: `[我挂断了语音通话]`,
-                mediaData: { callDuration: formatTime(callDuration) },
-            });
-            messagesRef.current = [...messagesRef.current, endMsg];
-        }
-
-        // Delay then close
-        setTimeout(() => onEnd(), 1500);
-    }, [session.id, callDuration, onEnd]);
-
+      
     // ── Render ──────────────────────────────────────
 
     return (

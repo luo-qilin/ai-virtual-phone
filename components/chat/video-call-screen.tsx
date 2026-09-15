@@ -367,10 +367,11 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── AI response processing ──
 
-    const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[] } => {
+       const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[]; shouldHangup: boolean } => {
         const previousState = getLatestCharacterStateValues(session.contactId);
 
-        const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+                       const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+                   const shouldHangup = parts.some(p => p.mediaData?.label === "hangup");
 
         // 自定义状态栏渲染戳：不盖的话 custom 模式下 [状态栏] 原文按 markdown 渲染，看着像掉格式
         const statusRegionMode = statusPanel && isCustomStatusRegionActive(getStatusRegionConfig(session.id))
@@ -413,8 +414,42 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
             .filter(p => !p.mediaType && p.content.trim())
             .map(p => p.content);
 
-        return { cleanParts, stateValues };
+               return { cleanParts, stateValues, shouldHangup };
     }, [session.id, session.contactId]);
+
+    const endCall = useCallback((by: "user" | "assistant") => {
+        if (stateRef.current === "ENDED") return;
+        setCallState("ENDED");
+        if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
+        if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
+        stopCameraStream();
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        if (offlineMode) {
+            appendChatOfflineTurn({
+                sessionId: session.id,
+                userContent: by === "assistant"
+                    ? `[${character.name}结束了面对面视频聊天]`
+                    : `[发起并结束了面对面视频聊天]`,
+                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
+                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面视频交流。`,
+                summaryTag: "面对面",
+            });
+        } else {
+            const endMsg = pushChatMessage({
+                sessionId: session.id,
+                role: by,
+                content: `[我挂断了视频通话]`,
+                mediaData: { callDuration: formatTime(callDuration) },
+                ...(by === "assistant"
+                    ? { senderCharacterId: session.contactId, senderName: character.name }
+                    : {}),
+            });
+            messagesRef.current = [...messagesRef.current, endMsg];
+        }
+        setTimeout(() => onEnd(), 1500);
+    }, [session.id, session.contactId, callDuration, onEnd, character.name, offlineMode, stopCameraStream]);
+
+    const handleHangup = useCallback(() => endCall("user"), [endCall]);
 
     // ── Full conversation turn ──────────────────────
 
@@ -440,12 +475,15 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
             }));
             if (stateRef.current === "ENDED") return;
 
-            const { cleanParts } = processAIResponse(aiResponseText);
+                       const { cleanParts, shouldHangup } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
 
-            if (!displayText) { setCallState("IDLE"); return; }
-
+            if (!displayText) {
+                if (shouldHangup) endCall("assistant");
+                else setCallState("IDLE");
+                return;
+            }
             // Persistence for Offline Mode
             if (offlineMode && userText) {
                 appendChatOfflineTurn({
@@ -474,14 +512,19 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
                 } catch (e) { console.warn("[VideoCall] TTS failed:", e); }
             }
 
-            if (stateRef.current !== "ENDED") setCallState("IDLE");
+                      if (stateRef.current === "ENDED") return;
+            if (shouldHangup) {
+                endCall("assistant");
+                return;
+            }
+            setCallState("IDLE");
         } catch (error: any) {
             if (stateRef.current !== "ENDED") {
                 setSubtitles(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", text: `⚠️ ${error?.message || "发送失败"}` }]);
                 setCallState("IDLE");
             }
         }
-    }, [session, processAIResponse, captureCameraFrame, playCallAudio, offlineMode]);
+       }, [session, processAIResponse, captureCameraFrame, playCallAudio, offlineMode, endCall]);
 
     // ── Auto-listen ────────────────────────────────
 
@@ -595,31 +638,7 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── Hangup ──────────────────────────────────────
 
-    const handleHangup = useCallback(() => {
-        setCallState("ENDED");
-        if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
-        if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
-        stopCameraStream();
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-
-        if (offlineMode) {
-            appendChatOfflineTurn({
-                sessionId: session.id,
-                userContent: `[发起并结束了面对面视频聊天]`,
-                assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
-                summary: `进行了时长为 ${formatTime(callDuration)} 的面对面视频交流。`,
-                summaryTag: "面对面",
-            });
-        } else {
-            const endMsg = pushChatMessage({
-                sessionId: session.id, role: "user",
-                content: `[我挂断了视频通话]`,
-                mediaData: { callDuration: formatTime(callDuration) },
-            });
-            messagesRef.current = [...messagesRef.current, endMsg];
-        }
-        setTimeout(() => onEnd(), 1500);
-    }, [session.id, callDuration, onEnd, stopCameraStream]);
+    
 
     // 通话音频会话 + 卸载兜底：不经挂断键退出时释放识别与在途播放，
     // 防止识别自动重启循环在后台无限自我重启、麦克风永不归还（详见 voice-call-screen）。
