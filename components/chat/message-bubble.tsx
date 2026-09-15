@@ -122,7 +122,7 @@ export const MessageBubble = memo(function MessageBubble({ msg, onUpdate, charNa
         case "audio":
             return <VoiceMessageBubble msg={msg} characterId={characterId} onUpdate={onUpdate} defaultTranslationExpanded={defaultTranslationExpanded} />;
         case "group_invite":
-            return <GroupInviteBubble msg={msg} onUpdate={onUpdate} />;
+            return <GroupInviteBubble msg={msg} charName={charName} onUpdate={onUpdate} />;
         default: {
             // 聊天插件自定义消息类型：mediaType = "plugin:<kind>"，由注册插件渲染
             if (msg.mediaType?.startsWith("plugin:")) {
@@ -2338,11 +2338,32 @@ function VoiceMessageBubble({ msg, characterId, onUpdate, defaultTranslationExpa
     );
 }
 
-function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (updated: ChatMessage) => void }) {
+function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; charName?: string; onUpdate?: (updated: ChatMessage) => void }) {
     const data = msg.mediaData;
     const targetGroupId = data?.targetGroupId;
-    const targetGroupName = data?.targetGroupName || "群聊";
-    const inviterName = data?.inviterName || "对方";
+    const inviterName = data?.inviterName || charName || "对方";
+    
+    // 自动寻找上下文中的真实群名
+    const resolveGroupName = (): string => {
+        if (data?.targetGroupName && data.targetGroupName !== "群聊") return data.targetGroupName;
+        const sessions = loadChatSessions();
+        if (targetGroupId) {
+            const match = sessions.find(s => s.id === targetGroupId);
+            if (match?.groupName) return match.groupName;
+        }
+        // 尝试从该角色参与的群聊中寻找最近的一个群
+        const chars = loadCharacters();
+        const inviterChar = chars.find(c => c.name === inviterName);
+        if (inviterChar) {
+            const groupSession = sessions.find(s => s.isGroup && (s.participantIds || []).includes(inviterChar.id));
+            if (groupSession?.groupName) return groupSession.groupName;
+        }
+        const firstGroup = sessions.find(s => s.isGroup && s.groupName);
+        if (firstGroup?.groupName) return firstGroup.groupName;
+        return data?.targetGroupName || "群聊";
+    };
+
+    const targetGroupName = resolveGroupName();
     const status = data?.status || "pending";
 
     const handleAction = (accepted: boolean) => {

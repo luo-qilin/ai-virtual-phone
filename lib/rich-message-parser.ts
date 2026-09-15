@@ -332,7 +332,7 @@ const RICH_PATTERNS: {
                 mediaType: "group_invite" as const,
                 mediaData: {
                     targetGroupId,
-                    targetGroupName: targetGroupName || "群聊",
+                    targetGroupName: targetGroupName || "",
                     inviterName,
                     status: "pending" as const,
                 },
