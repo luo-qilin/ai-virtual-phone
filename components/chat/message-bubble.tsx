@@ -2403,6 +2403,7 @@ function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (up
                 content: `${inviterName}邀请你加入了群聊`,
             });
             window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: targetSession.id } }));
+            window.dispatchEvent(new CustomEvent("chat-sessions-updated"));
         }
     };
 
