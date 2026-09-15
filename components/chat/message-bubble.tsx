@@ -2387,10 +2387,8 @@ function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (up
             // 在对应群聊中添加进群通知
             pushChatMessage({
                 sessionId: targetSession.id,
-                role: "user",
+                role: "system",
                 content: `${inviterName}邀请你加入了群聊`,
-                mediaType: "group_admin_notice",
-                mediaData: { adminAction: "invite", adminActorName: inviterName, adminTargetName: "你" },
             });
             window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: targetSession.id } }));
         }
