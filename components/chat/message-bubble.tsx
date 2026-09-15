@@ -2351,15 +2351,19 @@ function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; char
             const match = sessions.find(s => s.id === targetGroupId);
             if (match?.groupName) return match.groupName;
         }
-        // 尝试从该角色参与的群聊中寻找最近的一个群
+        // 如果有明确传入目标群名且非默认，优先返回
+        if (data?.targetGroupName && data.targetGroupName !== "群聊") {
+            const exactMatch = sessions.find(s => s.isGroup && (s.groupName === data.targetGroupName || s.alias === data.targetGroupName));
+            if (exactMatch?.groupName) return exactMatch.groupName;
+            return data.targetGroupName;
+        }
+        // 尝试从该角色参与的群聊中寻找匹配的已有群
         const chars = loadCharacters();
         const inviterChar = chars.find(c => c.name === inviterName);
         if (inviterChar) {
             const groupSession = sessions.find(s => s.isGroup && (s.participantIds || []).includes(inviterChar.id));
             if (groupSession?.groupName) return groupSession.groupName;
         }
-        const firstGroup = sessions.find(s => s.isGroup && s.groupName);
-        if (firstGroup?.groupName) return firstGroup.groupName;
         return data?.targetGroupName || "群聊";
     };
 
@@ -2379,16 +2383,16 @@ function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; char
             if (!targetSession) {
                 targetSession = sessions.find(s => s.isGroup && (s.groupName === targetGroupName || s.alias === targetGroupName));
             }
-            // 严格加入已有群聊：优先按 targetGroupId，其次匹配 groupName/alias，如果依然没找到则尝试找该角色所在的已有群
+            // 严格按名称或角色精确匹配已有群，严禁回落到随机的第一个群
+            if (!targetSession && data?.targetGroupName) {
+                targetSession = sessions.find(s => s.isGroup && (s.groupName === data.targetGroupName || s.alias === data.targetGroupName)) || null;
+            }
             if (!targetSession) {
                 const chars = loadCharacters();
                 const inviterChar = chars.find(c => c.name === inviterName);
                 if (inviterChar) {
                     targetSession = sessions.find(s => s.isGroup && (s.participantIds || []).includes(inviterChar.id)) || null;
                 }
-            }
-            if (!targetSession) {
-                targetSession = sessions.find(s => s.isGroup) || null;
             }
 
             if (targetSession) {
