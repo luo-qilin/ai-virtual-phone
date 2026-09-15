@@ -215,7 +215,14 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
                 : `[我向${character.name}发起了语音通话]`;
             
             if (offlineMode) {
-                // 线下模式不调用 pushChatMessage 污染私聊，仅维护内存上下文
+                // 线下模式：增加记录到线下历史中，绝不上报到线上聊天记录库
+                appendChatOfflineTurn({
+                    sessionId: session.id,
+                    userContent: callMsg,
+                    assistantContent: "（语音通话已发起）",
+                    summary: callMsg,
+                    summaryTag: "语音通话",
+                });
                 messagesRef.current = [...messagesRef.current, { id: `sys-${Date.now()}`, role: initRole, content: callMsg, createdAt: new Date().toISOString() } as ChatMessage];
             } else {
                 const sysMsg = pushChatMessage({

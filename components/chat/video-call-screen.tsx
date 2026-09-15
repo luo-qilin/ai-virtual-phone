@@ -307,6 +307,14 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
                 : `[我向${character.name}发起了视频通话]`;
             
             if (offlineMode) {
+                // 线下模式：增加记录到线下历史中，绝不上报到线上聊天记录库
+                appendChatOfflineTurn({
+                    sessionId: session.id,
+                    userContent: callMsg,
+                    assistantContent: "（视频通话已发起）",
+                    summary: callMsg,
+                    summaryTag: "视频通话",
+                });
                 messagesRef.current = [...messagesRef.current, { id: `sys-${Date.now()}`, role: initRole, content: callMsg, createdAt: new Date().toISOString() } as ChatMessage];
             } else {
                 const sysMsg = pushChatMessage({
