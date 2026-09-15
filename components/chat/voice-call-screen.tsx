@@ -588,30 +588,24 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── Hangup ──────────────────────────────────────
 
-    const handleHangup = useCallback(() => {
+      const endCall = useCallback((by: "user" | "assistant") => {
+        if (stateRef.current === "ENDED") return;
         setCallState("ENDED");
-
-        // Stop any ongoing STT
         if (sttRef.current) {
             sttRef.current.abort();
             sttRef.current = null;
         }
-
-        // Stop any ongoing audio playback
         if (audioAbortRef.current) {
             audioAbortRef.current();
             audioAbortRef.current = null;
         }
-
-        // Stop browser TTS
-        if (window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-        }
-
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
         if (offlineMode) {
             appendChatOfflineTurn({
                 sessionId: session.id,
-                userContent: `[发起并结束了面对面语音聊天]`,
+                userContent: by === "assistant"
+                    ? `[${character.name}结束了面对面语音聊天]`
+                    : `[发起并结束了面对面语音聊天]`,
                 assistantContent: `（本次通话时长 ${formatTime(callDuration)}）`,
                 summary: `进行了时长为 ${formatTime(callDuration)} 的面对面语音交流。`,
                 summaryTag: "面对面",
@@ -619,17 +613,19 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
         } else {
             const endMsg = pushChatMessage({
                 sessionId: session.id,
-                role: "user",
+                role: by,
                 content: `[我挂断了语音通话]`,
                 mediaData: { callDuration: formatTime(callDuration) },
+                ...(by === "assistant"
+                    ? { senderCharacterId: session.contactId, senderName: character.name }
+                    : {}),
             });
             messagesRef.current = [...messagesRef.current, endMsg];
         }
-
-        // Delay then close
         setTimeout(() => onEnd(), 1500);
-    }, [session.id, callDuration, onEnd]);
+    }, [session.id, session.contactId, callDuration, onEnd, character.name, offlineMode]);
 
+    const handleHangup = useCallback(() => endCall("user"), [endCall]);
     // ── Render ──────────────────────────────────────
 
     return (
