@@ -2379,29 +2379,22 @@ function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; char
             if (!targetSession) {
                 targetSession = sessions.find(s => s.isGroup && (s.groupName === targetGroupName || s.alias === targetGroupName));
             }
+            // 严格加入已有群聊：优先按 targetGroupId，其次匹配 groupName/alias，如果依然没找到则尝试找该角色所在的已有群
             if (!targetSession) {
-                // 查找邀请者对应的角色 ID，若没有则加入
                 const chars = loadCharacters();
                 const inviterChar = chars.find(c => c.name === inviterName);
-                const participantIds = inviterChar ? [inviterChar.id] : [];
-                targetSession = {
-                    id: targetGroupId || `group-${Date.now()}`,
-                    contactId: inviterChar?.id || "",
-                    isGroup: true,
-                    groupName: targetGroupName,
-                    participantIds,
-                    isSpectator: false,
-                    unreadCount: 1,
-                    updatedAt: new Date().toISOString(),
-                    createdAt: new Date().toISOString(),
-                };
-                sessions.unshift(targetSession);
-                saveChatSessions(sessions);
-            } else {
+                if (inviterChar) {
+                    targetSession = sessions.find(s => s.isGroup && (s.participantIds || []).includes(inviterChar.id)) || null;
+                }
+            }
+            if (!targetSession) {
+                targetSession = sessions.find(s => s.isGroup) || null;
+            }
+
+            if (targetSession) {
                 const idx = sessions.findIndex(s => s.id === targetSession.id);
                 if (idx !== -1) {
                     const currentParticipants = new Set(sessions[idx].participantIds || []);
-                    // 确保邀请人在此群中
                     const chars = loadCharacters();
                     const inviterChar = chars.find(c => c.name === inviterName);
                     if (inviterChar) currentParticipants.add(inviterChar.id);
