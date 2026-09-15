@@ -2345,21 +2345,27 @@ function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; char
     
     // 自动寻找上下文中的真实群名
     const resolveGroupName = (): string => {
-        if (data?.targetGroupName && data.targetGroupName !== "群聊") return data.targetGroupName;
         const sessions = loadChatSessions();
+        const chars = loadCharacters();
+        const inviterChar = chars.find(c => c.name === inviterName);
+
         if (targetGroupId) {
             const match = sessions.find(s => s.id === targetGroupId);
             if (match?.groupName) return match.groupName;
         }
-        // 如果有明确传入目标群名且非默认，优先返回
         if (data?.targetGroupName && data.targetGroupName !== "群聊") {
             const exactMatch = sessions.find(s => s.isGroup && (s.groupName === data.targetGroupName || s.alias === data.targetGroupName));
             if (exactMatch?.groupName) return exactMatch.groupName;
             return data.targetGroupName;
         }
-        // 尝试从该角色参与的群聊中寻找匹配的已有群
-        const chars = loadCharacters();
-        const inviterChar = chars.find(c => c.name === inviterName);
+        // 优先锁定用户目前正处于【围观模式/退群状态】(isSpectator === true) 的群聊！
+        if (inviterChar) {
+            const spectatorGroup = sessions.find(s => s.isGroup && s.isSpectator && (s.participantIds || []).includes(inviterChar.id));
+            if (spectatorGroup?.groupName) return spectatorGroup.groupName;
+        }
+        const anySpectatorGroup = sessions.find(s => s.isGroup && s.isSpectator);
+        if (anySpectatorGroup?.groupName) return anySpectatorGroup.groupName;
+
         if (inviterChar) {
             const groupSession = sessions.find(s => s.isGroup && (s.participantIds || []).includes(inviterChar.id));
             if (groupSession?.groupName) return groupSession.groupName;
@@ -2383,11 +2389,18 @@ function GroupInviteBubble({ msg, charName, onUpdate }: { msg: ChatMessage; char
             if (!targetSession) {
                 targetSession = sessions.find(s => s.isGroup && (s.groupName === targetGroupName || s.alias === targetGroupName));
             }
-            // 严格按名称或角色精确匹配已有群，严禁回落到随机的第一个群
-            if (!targetSession && data?.targetGroupName) {
-                targetSession = sessions.find(s => s.isGroup && (s.groupName === data.targetGroupName || s.alias === data.targetGroupName)) || null;
+            // 精确优先匹配用户处于【围观模式】(isSpectator === true) 的目标群聊
+            if (!targetSession) {
+                const chars = loadCharacters();
+                const inviterChar = chars.find(c => c.name === inviterName);
+                if (inviterChar) {
+                    targetSession = sessions.find(s => s.isGroup && s.isSpectator && (s.participantIds || []).includes(inviterChar.id)) || null;
+                }
             }
             if (!targetSession) {
+                targetSession = sessions.find(s => s.isGroup && s.isSpectator) || null;
+            }
+            if (!targetSession && inviterName) {
                 const chars = loadCharacters();
                 const inviterChar = chars.find(c => c.name === inviterName);
                 if (inviterChar) {
