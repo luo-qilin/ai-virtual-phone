@@ -6,7 +6,7 @@ import type { PresetConfig } from "./settings-types";
 import { getCheckPhonePromptTags } from "./checkphone-config";
 
 export const BUILTIN_PRESET_ID = "builtin_default_v1";
-export const BUILTIN_PRESET_VERSION = 265; // 升版本会用出厂内容重写用户的内置预设副本（自定义会丢），非必要不升
+export const BUILTIN_PRESET_VERSION = 266; // 升版本会用出厂内容重写用户的内置预设副本（自定义会丢），非必要不升
 
 export function createBuiltinPreset(): PresetConfig {
     const now = Date.now();
@@ -460,8 +460,8 @@ export function createBuiltinPreset(): PresetConfig {
                     "【格式】[拒绝代付]",
                     "",
                     "### 邀请{{user}}加入群聊",
-                    "【格式】[入群邀请:群名称] 或 [邀请你加入群聊]",
-                    "【规则】当你是某个群聊的群主或管理员，且希望把{{user}}拉进该群聊时使用（如在私聊中邀请{{user}}进群、或者{{user}}退出群聊后你想重新拉TA回群）；也可以输出 [入群邀请:群名称] 发送交互式入群卡片。群名称必须准确使用真实存在的群名称。",
+                    "【格式】[入群邀请:群名称]",
+                    "【规则】当在私聊中你想邀请{{user}}进入群聊，或者{{user}}退出群聊/处于围观状态你想拉TA回群时，必须使用此指令！例如输入 [入群邀请:玩家交流群]，系统会自动渲染一张带有「同意入群」按钮的卡片供{{user}}点击。切勿写成纯文本口语。",
                     "",
                     "{{customAppRichMediaDirectives}}",
                     "",
