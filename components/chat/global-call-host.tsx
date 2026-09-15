@@ -95,10 +95,8 @@ export function GlobalCallHost() {
                         onMinimize={() => setCall(prev => (prev ? { ...prev, minimized: true } : null))}
                         onEnd={handleEndCall}
                         onConnect={() => {
-                            if (call.initiator === "user") {
-                                const actionText = call.offlineMode
-                                    ? "[我向对方发起并接通了面对面语音对话]"
-                                    : `[我向${call.character.name}发起了语音通话]`;
+                            if (call.initiator === "user" && !call.offlineMode) {
+                                const actionText = `[我向${call.character.name}发起了语音通话]`;
                                 pushChatMessage({ sessionId: call.session.id, role: "user", content: actionText });
                             }
                         }}
@@ -112,10 +110,8 @@ export function GlobalCallHost() {
                         onMinimize={() => setCall(prev => (prev ? { ...prev, minimized: true } : null))}
                         onEnd={handleEndCall}
                         onConnect={() => {
-                            if (call.initiator === "user") {
-                                const actionText = call.offlineMode
-                                    ? "[我向对方发起并接通了面对面视频对话]"
-                                    : `[我向${call.character.name}发起了视频通话]`;
+                            if (call.initiator === "user" && !call.offlineMode) {
+                                const actionText = `[我向${call.character.name}发起了视频通话]`;
                                 pushChatMessage({ sessionId: call.session.id, role: "user", content: actionText });
                             }
                         }}
