@@ -2370,16 +2370,28 @@ function GroupInviteBubble({ msg, onUpdate }: { msg: ChatMessage; onUpdate?: (up
                     groupName: targetGroupName,
                     participantIds,
                     isSpectator: false,
-                    createdAt: new Date().toISOString(),
+                    unreadCount: 1,
                     updatedAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString(),
                 };
                 sessions.unshift(targetSession);
                 saveChatSessions(sessions);
             } else {
-                targetSession.isSpectator = false;
                 const idx = sessions.findIndex(s => s.id === targetSession.id);
                 if (idx !== -1) {
-                    sessions[idx] = { ...sessions[idx], isSpectator: false };
+                    const currentParticipants = new Set(sessions[idx].participantIds || []);
+                    // 确保邀请人在此群中
+                    const chars = loadCharacters();
+                    const inviterChar = chars.find(c => c.name === inviterName);
+                    if (inviterChar) currentParticipants.add(inviterChar.id);
+
+                    sessions[idx] = {
+                        ...sessions[idx],
+                        isSpectator: false,
+                        participantIds: [...currentParticipants],
+                        updatedAt: new Date().toISOString(),
+                    };
+                    targetSession = sessions[idx];
                     saveChatSessions(sessions);
                 }
             }
