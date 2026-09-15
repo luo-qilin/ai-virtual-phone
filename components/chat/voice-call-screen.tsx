@@ -280,11 +280,14 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // ── AI response processing (same logic as chat-room) ──
 
-    const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[] } => {
+       const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[]; shouldHangup: boolean } => {
         // Use shared parseAIResponse for full rich media support (stickers, quotes, etc.)
         const previousState = getLatestCharacterStateValues(session.contactId);
 
-        const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+              const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+        const shouldHangup = parts.some(p => p.mediaData?.label === "hangup");
+
+        // 自定义状态栏渲染戳
 
         // 自定义状态栏渲染戳：不盖的话 custom 模式下 [状态栏] 原文按 markdown 渲染，看着像掉格式
         const statusRegionMode = statusPanel && isCustomStatusRegionActive(getStatusRegionConfig(session.id))
@@ -334,7 +337,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
             .filter(p => !p.mediaType && p.content.trim())
             .map(p => p.content);
 
-        return { cleanParts, stateValues };
+               return { cleanParts, stateValues, shouldHangup };
     }, [session.id, session.contactId]);
 
     // ── Full conversation turn ──────────────────────
