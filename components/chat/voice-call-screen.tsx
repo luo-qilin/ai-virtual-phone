@@ -404,7 +404,7 @@ const endCall = useCallback((by: "user" | "assistant") => {
             if (stateRef.current === "ENDED") return;
 
             // 3. Process response
-            const { cleanParts } = processAIResponse(aiResponseText);
+                        const { cleanParts } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
 
@@ -448,9 +448,12 @@ const endCall = useCallback((by: "user" | "assistant") => {
                 }
             }
 
-            if (stateRef.current !== "ENDED") {
-                setCallState("IDLE");
+                      if (stateRef.current === "ENDED") return;
+            if (shouldHangup) {
+                endCall("assistant");
+                return;
             }
+            setCallState("IDLE");
         } catch (error: any) {
             console.error("[VoiceCall] Error:", error);
             if (stateRef.current !== "ENDED") {
@@ -462,8 +465,7 @@ const endCall = useCallback((by: "user" | "assistant") => {
                 setCallState("IDLE");
             }
         }
-    }, [session, processAIResponse, playCallAudio]);
-
+      }, [session, processAIResponse, playCallAudio, endCall, offlineMode]);
     // ── Auto-listen: 进入 IDLE 自动开始监听 ────────
 
     const startListening = useCallback(() => {
