@@ -475,12 +475,15 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
             }));
             if (stateRef.current === "ENDED") return;
 
-            const { cleanParts } = processAIResponse(aiResponseText);
+                       const { cleanParts, shouldHangup } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
 
-            if (!displayText) { setCallState("IDLE"); return; }
-
+            if (!displayText) {
+                if (shouldHangup) endCall("assistant");
+                else setCallState("IDLE");
+                return;
+            }
             // Persistence for Offline Mode
             if (offlineMode && userText) {
                 appendChatOfflineTurn({
@@ -509,14 +512,19 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
                 } catch (e) { console.warn("[VideoCall] TTS failed:", e); }
             }
 
-            if (stateRef.current !== "ENDED") setCallState("IDLE");
+                      if (stateRef.current === "ENDED") return;
+            if (shouldHangup) {
+                endCall("assistant");
+                return;
+            }
+            setCallState("IDLE");
         } catch (error: any) {
             if (stateRef.current !== "ENDED") {
                 setSubtitles(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", text: `⚠️ ${error?.message || "发送失败"}` }]);
                 setCallState("IDLE");
             }
         }
-    }, [session, processAIResponse, captureCameraFrame, playCallAudio, offlineMode]);
+       }, [session, processAIResponse, captureCameraFrame, playCallAudio, offlineMode, endCall]);
 
     // ── Auto-listen ────────────────────────────────
 
