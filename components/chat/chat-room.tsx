@@ -5490,7 +5490,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }, [session.id, stopLoadMoreAnchorTracking]);
 
     // Shared handler: reload messages + re-trigger scroll-to-bottom after call ends
-           const returnFromCall = (hide: () => void) => {
+             const returnFromCall = (hide: () => void) => {
         hide();
         setCallMinimized(false);
         needsInitialScrollRef.current = true;
@@ -5502,9 +5502,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         }
         setPendingGenerate(true);
         window.setTimeout(() => {
-            window.dispatchEvent(new CustomEvent(CHAT_REQUEST_REPLY_EVENT, {
-                detail: { sessionId: session.id },
-            }));
+            void triggerAIResponse();
         }, 800);
     };
 
@@ -5521,12 +5519,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
                         onMinimize={() => setCallMinimized(true)}
-                      onEnd={() => returnFromCall(() => {
+                     onEnd={() => returnFromCall(() => {
                             setShowVoiceCall(false);
                             setCallMinimized(false);
-                            if (!isOfflineCall && !session.isGroup) {
-                                window.setTimeout(() => { void triggerReply(); }, 400);
-                            }
                         })}
                         onConnect={() => {
                             if (callInitiator === "user") {
@@ -5548,12 +5543,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
                         onMinimize={() => setCallMinimized(true)}
-                       onEnd={() => returnFromCall(() => {
+                      onEnd={() => returnFromCall(() => {
                             setShowVideoCall(false);
                             setCallMinimized(false);
-                            if (!isOfflineCall && !session.isGroup) {
-                                window.setTimeout(() => { void triggerReply(); }, 400);
-                            }
                         })}
                         onConnect={() => {
                             if (callInitiator === "user") {
