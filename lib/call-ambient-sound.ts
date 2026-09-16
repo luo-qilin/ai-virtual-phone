@@ -96,7 +96,8 @@ function startProceduralAmbient(soundType: AmbientSoundType, volume: number): ()
     if (!ctx) return () => {};
 
     const masterGain = ctx.createGain();
-    const targetGain = Math.max(0.01, Math.min(1, volume));
+    // 将整体基准音量再压低一半，防止背景音过大喧宾夺主
+    const targetGain = Math.max(0.001, Math.min(1, volume)) * 0.5;
     masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
     // 平滑淡入 0.4 秒
     masterGain.gain.exponentialRampToValueAtTime(targetGain, ctx.currentTime + 0.4);
@@ -358,7 +359,8 @@ function startCustomAudioAmbient(url: string, volume: number): () => void {
     const audio = new Audio(url);
     _customAudio = audio;
     audio.loop = true;
-    audio.volume = Math.max(0.01, Math.min(1, volume));
+    // 自定义音频也同样压低一半基准音量
+    audio.volume = Math.max(0.001, Math.min(1, volume)) * 0.5;
     audio.play().catch(e => {
         console.warn("[AmbientSound] Custom audio play failed:", e);
     });
