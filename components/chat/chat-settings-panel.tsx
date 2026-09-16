@@ -1254,7 +1254,7 @@ export function ChatSettingsPanel({
                                 <ChatInfoIcon icon={Music} color={BINDING_ACCENTS.voice} />
                                 <div className="menu-label-group">
                                     <span className="menu-label">通话伴随环境音 (BGM)</span>
-                                    <span className="menu-desc">角色开口说话时同步伴随轻柔播放，说话结束自动停止</span>
+                                    <span className="menu-desc">接通后持续播放环境音，增加沉浸感</span>
                                 </div>
                             </div>
                         </div>
@@ -1266,6 +1266,10 @@ export function ChatSettingsPanel({
                                     const next = e.target.value;
                                     setCallAmbientSound(next);
                                     updateSession({ callAmbientSound: next });
+                                    // 切换音频时，如果当前在通话中，需要重启才能换声
+                                    import("@/lib/call-ambient-sound").then(({ startCallAmbient }) => {
+                                        startCallAmbient(next, callAmbientVolume);
+                                    });
                                 }}
                             >
                                 {AMBIENT_SOUND_OPTIONS.map(opt => (
@@ -1284,6 +1288,11 @@ export function ChatSettingsPanel({
                                         const v = e.target.value.trim();
                                         setCallAmbientSound(v || "custom");
                                         updateSession({ callAmbientSound: v });
+                                        if (v) {
+                                            import("@/lib/call-ambient-sound").then(({ startCallAmbient }) => {
+                                                startCallAmbient(v, callAmbientVolume);
+                                            });
+                                        }
                                     }}
                                 />
                             )}
