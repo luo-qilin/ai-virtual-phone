@@ -5515,7 +5515,13 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
                         onMinimize={() => setCallMinimized(true)}
-                        onEnd={() => returnFromCall(() => { setShowVoiceCall(false); setCallMinimized(false); })}
+                      onEnd={() => returnFromCall(() => {
+                            setShowVoiceCall(false);
+                            setCallMinimized(false);
+                            if (!isOfflineCall && !session.isGroup) {
+                                window.setTimeout(() => { void triggerReply(); }, 400);
+                            }
+                        })}
                         onConnect={() => {
                             if (callInitiator === "user") {
                                 const actionText = isOfflineCall ? "[我向对方发起并接通了面对面语音对话]" : `[我向${character.name}发起了语音通话]`;
@@ -5536,7 +5542,13 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                         initiator={callInitiator}
                         offlineMode={isOfflineCall}
                         onMinimize={() => setCallMinimized(true)}
-                        onEnd={() => returnFromCall(() => { setShowVideoCall(false); setCallMinimized(false); })}
+                       onEnd={() => returnFromCall(() => {
+                            setShowVideoCall(false);
+                            setCallMinimized(false);
+                            if (!isOfflineCall && !session.isGroup) {
+                                window.setTimeout(() => { void triggerReply(); }, 400);
+                            }
+                        })}
                         onConnect={() => {
                             if (callInitiator === "user") {
                                 const actionText = isOfflineCall ? "[我向对方发起并接通了面对面视频对话]" : `[我向${character.name}发起了视频通话]`;
