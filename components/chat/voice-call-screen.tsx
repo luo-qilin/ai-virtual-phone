@@ -256,8 +256,10 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
     useEffect(() => {
         if (callState !== "CONNECTING" && !hasConnectedRef.current) {
             hasConnectedRef.current = true;
+            // 接通时就开始播放环境音（一直放），直到挂断
+            startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
         }
-    }, [callState]);
+    }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 
     // ── Format time MM:SS ───────────────────────────
 
@@ -441,18 +443,11 @@ const endCall = useCallback((by: "user" | "assistant") => {
                     if (stateRef.current === "ENDED") return;
 
                     if (audioBlob) {
-                        const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
+                        // 环境音现在在接通时就启动并一直播放，不需要在说话时反复启停了
                         const { promise, abort } = playCallAudio(audioBlob);
-                        audioAbortRef.current = () => {
-                            abort();
-                            ambientStop();
-                        };
-                        try {
-                            await promise;
-                        } finally {
-                            ambientStop();
-                            audioAbortRef.current = null;
-                        }
+                        audioAbortRef.current = abort;
+                        await promise;
+                        audioAbortRef.current = null;
                     }
                 } catch (e) {
                     console.warn("[VoiceCall] TTS failed:", e);

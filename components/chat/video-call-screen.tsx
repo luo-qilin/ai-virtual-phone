@@ -347,8 +347,9 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
     useEffect(() => {
         if (callState !== "CONNECTING" && !hasConnectedRef.current) {
             hasConnectedRef.current = true;
+            startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
         }
-    }, [callState]);
+    }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
@@ -507,18 +508,10 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
                     const audioBlob = await synthesizeSpeech(speechText, voiceConfig);
                     if (stateRef.current === "ENDED") return;
                     if (audioBlob && !isSpeakerMutedRef.current) {
-                        const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
                         const { promise, abort } = playCallAudio(audioBlob);
-                        audioAbortRef.current = () => {
-                            abort();
-                            ambientStop();
-                        };
-                        try {
-                            await promise;
-                        } finally {
-                            ambientStop();
-                            audioAbortRef.current = null;
-                        }
+                        audioAbortRef.current = abort;
+                        await promise;
+                        audioAbortRef.current = null;
                     }
                 } catch (e) { console.warn("[VideoCall] TTS failed:", e); }
             }

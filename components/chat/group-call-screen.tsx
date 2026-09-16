@@ -195,8 +195,9 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
     useEffect(() => {
         if (callState !== "CONNECTING" && !hasConnectedRef.current) {
             hasConnectedRef.current = true;
+            startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
         }
-    }, [callState]);
+    }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60);
@@ -280,18 +281,10 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
                         const audioBlob = await synthesizeSpeech(speechText, voiceConfig);
                         if (stateRef.current === "ENDED") return;
                         if (audioBlob) {
-                            const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
                             const { promise, abort } = playCallAudio(audioBlob);
-                            audioAbortRef.current = () => {
-                                abort();
-                                ambientStop();
-                            };
-                            try {
-                                await promise;
-                            } finally {
-                                ambientStop();
-                                audioAbortRef.current = null;
-                            }
+                            audioAbortRef.current = abort;
+                            await promise;
+                            audioAbortRef.current = null;
                         }
                     } catch (e) {
                         console.warn("[GroupCall] TTS failed:", e);
