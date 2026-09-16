@@ -49,7 +49,10 @@ function getAmbientContext(): AudioContext | null {
         }
     }
     if (_ambientCtx && _ambientCtx.state === "suspended") {
-        _ambientCtx.resume().catch(() => {});
+        // 在一些浏览器上，没有手势直接 resume 会被拒绝。我们尽力而为。
+        _ambientCtx.resume().catch(() => {
+            console.warn("[AmbientSound] AudioContext resume blocked by browser policy without user gesture.");
+        });
     }
     return _ambientCtx;
 }

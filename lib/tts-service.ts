@@ -286,6 +286,18 @@ export function unlockAudioPlayback(): void {
         }).catch(() => {});
     }
 
+    // 同时尝试解锁连麦环境音的独立 Context
+    try {
+        const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (Ctor) {
+            // 这只是为了在手势中初始化/激活系统音频通道，不做实际播放
+            const dummyCtx = new Ctor();
+            dummyCtx.resume().then(() => {
+                try { dummyCtx.suspend(); } catch {}
+            }).catch(() => {});
+        }
+    } catch {}
+
     // Fallback path: unlock the shared <audio> element once.
     if (_audioUnlocked) return;
     const audio = getSharedAudio();
