@@ -99,6 +99,8 @@ function startProceduralAmbient(soundType: AmbientSoundType, volume: number): ()
     if (!ctx) return () => {};
 
     const masterGain = ctx.createGain();
+    _activeMasterGain = masterGain;
+    
     // 将整体基准音量再压低一半，防止背景音过大喧宾夺主
     const targetGain = Math.max(0.001, Math.min(1, volume)) * 0.5;
     masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
@@ -322,6 +324,10 @@ function startProceduralAmbient(soundType: AmbientSoundType, volume: number): ()
         isStopped = true;
         activeTimers.forEach(id => clearInterval(id));
 
+        if (_activeMasterGain === masterGain) {
+            _activeMasterGain = null;
+        }
+
         try {
             // 平滑淡出 0.3 秒，避免突然咔嗒声
             masterGain.gain.cancelScheduledValues(ctx.currentTime);
@@ -430,5 +436,25 @@ export function stopCallAmbient(): void {
             _activeStopFn();
         } catch {}
         _activeStopFn = null;
+    }
+}
+
+let _activeMasterGain: GainNode | null = null;
+
+/** 动态修改当前正在播放的环境音音量 */
+export function updateCallAmbientVolume(volume: number): void {
+    const effectiveVolume = Math.max(0.001, Math.min(1, volume)) * 0.5;
+    
+    // 如果是自定义音频
+    if (_customAudio) {
+        _customAudio.volume = effectiveVolume;
+    }
+    
+    // 如果是程序合成音频，直接调节 masterGain
+    if (_activeMasterGain && _ambientCtx) {
+        try {
+            _activeMasterGain.gain.cancelScheduledValues(_ambientCtx.currentTime);
+            _activeMasterGain.gain.linearRampToValueAtTime(effectiveVolume, _ambientCtx.currentTime + 0.1);
+        } catch {}
     }
 }

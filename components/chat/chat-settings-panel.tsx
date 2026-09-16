@@ -45,7 +45,7 @@ import { getSchemes, saveScheme, deleteScheme, type CSSScheme } from "@/lib/css-
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { KeyboardAutoSendDebounceItem } from "@/components/chat/keyboard-auto-send-debounce-item";
 import { ChevronRight, Image as ImageIcon, Video, Mic, LogOut, UserMinus, UserPlus, Users, Pin, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Music, type LucideIcon } from "lucide-react";
-import { AMBIENT_SOUND_OPTIONS } from "@/lib/call-ambient-sound";
+import { AMBIENT_SOUND_OPTIONS, updateCallAmbientVolume } from "@/lib/call-ambient-sound";
 import { BINDING_ACCENTS, CONTENT_APP_ACCENTS } from "@/lib/ui-accent-colors";
 import CSSSchemeBar from "@/components/ui/css-scheme-picker";
 import { ConfirmDialog } from "@/components/ui/modal";
@@ -1300,6 +1300,8 @@ export function ChatSettingsPanel({
                                             const v = Number(e.target.value);
                                             setCallAmbientVolume(v);
                                             updateSession({ callAmbientVolume: v });
+                                            // 实时生效
+                                            updateCallAmbientVolume(v);
                                         }}
                                         className="flex-1 accent-[var(--c-accent)]"
                                     />
