@@ -404,15 +404,15 @@ const endCall = useCallback((by: "user" | "assistant") => {
             if (stateRef.current === "ENDED") return;
 
             // 3. Process response
-                        const { cleanParts } = processAIResponse(aiResponseText);
+                       const { cleanParts, shouldHangup } = processAIResponse(aiResponseText);
             const displayText = cleanParts.join("\n");
             const speechText = stripBilingualForSpeech(displayText);
 
             if (!displayText) {
-                setCallState("IDLE");
+                if (shouldHangup) endCall("assistant");
+                else setCallState("IDLE");
                 return;
             }
-
             // 4. Persistence for Offline Mode
             if (offlineMode && userText) {
                 appendChatOfflineTurn({
