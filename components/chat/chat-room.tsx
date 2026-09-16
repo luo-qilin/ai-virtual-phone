@@ -5490,7 +5490,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }, [session.id, stopLoadMoreAnchorTracking]);
 
     // Shared handler: reload messages + re-trigger scroll-to-bottom after call ends
-           const returnFromCall = (hide: () => void) => {
+        const returnFromCall = (hide: () => void) => {
         hide();
         setCallMinimized(false);
         needsInitialScrollRef.current = true;
@@ -5500,6 +5500,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             setOfflineTurns(loadChatOfflineTurns(session.id));
             return;
         }
+        setPendingGenerate(true);
         triggerReply();
     };
 
