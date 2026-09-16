@@ -8,13 +8,16 @@ import { ChatRoom } from "./chat-room";
 import { MascotChatRoom } from "./mascot-chat-room";
 import { UserProfilePanel } from "./user-profile-panel";
 import { MessageCircle, Users, Aperture, UserRound } from "lucide-react";
-import { ChatSession, loadChatSessions, pushChatMessage, hydrateChatStorage } from "@/lib/chat-storage";
+import { ChatSession, loadChatSessions, pushChatMessage, hydrateChatStorage, createOrGetSession } from "@/lib/chat-storage";
 import { notifyMascotPageContext } from "@/lib/mascot-events";
 import { loadCharacters } from "@/lib/character-storage";
 import { SessionCustomCSS } from "@/components/ui/session-custom-css";
 import { kvGet } from "@/lib/kv-db";
 import { formatXiaohongshuShareForPrompt, type ChatSharePayload } from "@/lib/chat-share";
-import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT } from "@/lib/chat-notification-events";
+import { CHAT_OPEN_SESSION_EVENT, CHAT_OPEN_ADD_CONTACT_EVENT, CHAT_OPEN_CHARACTER_PROFILE_EVENT } from "@/lib/chat-notification-events";
+import { CharacterProfilePage } from "./character-profile-page";
+import { dispatchStartGlobalCall } from "@/lib/global-call-events";
+import type { Character } from "@/lib/character-types";
 import { CHAT_SESSIONS_MERGED_EVENT, type ChatSessionsMergedDetail } from "@/lib/chat-session-merge";
 import { getMascotSettingsSnapshot } from "@/lib/mascot-settings";
 
@@ -40,6 +43,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
     const [visitedSessions, setVisitedSessions] = useState<Map<string, ChatSession>>(new Map());
     const [dbReady, setDbReady] = useState(false);
     const [hideTabBar, setHideTabBar] = useState(false);
+    const [profileCharacter, setProfileCharacter] = useState<Character | null>(null);
 
     // Hydrate IndexedDB → in-memory caches on mount
     useEffect(() => {
@@ -89,6 +93,18 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
         };
         window.addEventListener(CHAT_OPEN_SESSION_EVENT, handler);
         return () => window.removeEventListener(CHAT_OPEN_SESSION_EVENT, handler);
+    }, []);
+
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const characterId = (e as CustomEvent<{ characterId?: string }>).detail?.characterId;
+            if (!characterId) return;
+            const character = loadCharacters().find(c => c.id === characterId) || null;
+            if (!character) return;
+            setProfileCharacter(character);
+        };
+        window.addEventListener(CHAT_OPEN_CHARACTER_PROFILE_EVENT, handler);
+        return () => window.removeEventListener(CHAT_OPEN_CHARACTER_PROFILE_EVENT, handler);
     }, []);
 
     // 重复会话被合并：被删会话的聊天室缓存一并卸载
@@ -237,7 +253,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
         <div
             className="chat-app absolute inset-0 flex flex-col overflow-hidden z-10"
             {...(activeSession || activeMascot ? { "data-room-active": "" } : {})}
-            {...(hideTabBar ? { "data-tabbar-hidden": "" } : {})}
+            {...(hideTabBar || profileCharacter ? { "data-tabbar-hidden": "" } : {})}
         >
             {/* Chat app-level custom CSS (lower priority than per-session CSS) */}
             {chatAppCSS && <SessionCustomCSS css={chatAppCSS} scope=".chat-app" />}
@@ -267,7 +283,7 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
             </div>
 
             {/* Bottom Navigation Bar — hide when inside a chat room */}
-            <nav className="chat-tab-bar chat-bottom-glass-bar" data-ui="nav" style={{ display: activeSession || activeMascot || hideTabBar ? "none" : undefined }}>
+            <nav className="chat-tab-bar chat-bottom-glass-bar" data-ui="nav" style={{ display: activeSession || activeMascot || hideTabBar || profileCharacter ? "none" : undefined }}>
                 <button
                     className={`chat-tab ${activeTab === "messages" ? "chat-tab-active" : ""}`}
                     onClick={() => setActiveTab("messages")}
@@ -321,6 +337,35 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
                     <MascotChatRoom
                         onBack={() => setActiveMascot(false)}
                         onDeleted={() => setActiveMascot(false)}
+                    />
+                </div>
+            )}
+            {profileCharacter && (
+                <div className="character-profile-layer absolute inset-0 z-[80]">
+                    <CharacterProfilePage
+                        character={profileCharacter}
+                        onClose={() => setProfileCharacter(null)}
+                        onSendMessage={() => {
+                            const sess = createOrGetSession(profileCharacter.id);
+                            setProfileCharacter(null);
+                            setActiveMascot(false);
+                            setActiveSession(sess);
+                            setActiveTab("messages");
+                        }}
+                        onStartCall={(type) => {
+                            const sess = createOrGetSession(profileCharacter.id);
+                            setProfileCharacter(null);
+                            setActiveMascot(false);
+                            setActiveSession(sess);
+                            setActiveTab("messages");
+                            dispatchStartGlobalCall({
+                                session: sess,
+                                character: profileCharacter,
+                                type,
+                                initiator: "user",
+                                offlineMode: false,
+                            });
+                        }}
                     />
                 </div>
             )}

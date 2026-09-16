@@ -1,5 +1,6 @@
 export const CHAT_MESSAGE_NOTICE_EVENT = "ai-chat-message-notice";
 export const CHAT_OPEN_SESSION_EVENT = "ai-chat-open-session";
+export const CHAT_OPEN_CHARACTER_PROFILE_EVENT = "ai-chat-open-character-profile";
 
 export type ChatMessageNoticeDetail = {
   sessionId: string;
@@ -24,4 +25,9 @@ export const CHAT_OPEN_ADD_CONTACT_EVENT = "ai-chat-open-add-contact";
 export function dispatchOpenAddContact(characterId: string): void {
   if (typeof window === "undefined" || !characterId) return;
   window.dispatchEvent(new CustomEvent(CHAT_OPEN_ADD_CONTACT_EVENT, { detail: { characterId } }));
+}
+
+export function dispatchOpenCharacterProfile(characterId: string): void {
+  if (typeof window === "undefined" || !characterId) return;
+  window.dispatchEvent(new CustomEvent(CHAT_OPEN_CHARACTER_PROFILE_EVENT, { detail: { characterId } }));
 }

@@ -20,7 +20,7 @@ import { formatOfflineTurnXml as formatOfflineTurnXmlShared, buildOfflinePromptH
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { sendBrowserNotification } from "@/lib/browser-notification";
-import { dispatchChatMessageNotice } from "@/lib/chat-notification-events";
+import { dispatchChatMessageNotice, dispatchOpenCharacterProfile } from "@/lib/chat-notification-events";
 import { shouldSendChatInputOnEnter } from "@/lib/chat-input-keyboard";
 import { useChatBottomReserve } from "./use-chat-bottom-reserve";
 import ReactMarkdown from "react-markdown";
@@ -6206,7 +6206,14 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                                             : character;
                                                         return (
                                                             <>
-                                                    <div onDoubleClick={() => {
+                                                    <div onClick={(e) => {
+                                                        if (offlineMode) return;
+                                                        e.stopPropagation();
+                                                        const targetChar = session.isGroup && msg.senderCharacterId
+                                                            ? groupCharMap.get(msg.senderCharacterId) || character
+                                                            : character;
+                                                        if (targetChar) dispatchOpenCharacterProfile(targetChar.id);
+                                                    }} onDoubleClick={() => {
                                                         const targetChar = session.isGroup && msg.senderCharacterId
                                                             ? groupCharMap.get(msg.senderCharacterId) || character
                                                             : character;

@@ -1900,6 +1900,7 @@ function CharArchiveView({
   const [briefBusy, setBriefBusy] = useState(false);
   const [briefError, setBriefError] = useState("");
   const [timeZone, setTimeZone] = useState(char.timeZone || "");
+  const [region, setRegion] = useState(char.region || "");
   const [tags, setTags] = useState<string[]>(char.tags || []);
   const [tagInput, setTagInput] = useState("");
   const [showTimeZonePicker, setShowTimeZonePicker] = useState(false);
@@ -1957,6 +1958,7 @@ function CharArchiveView({
     if (personality !== (char.personality || "")) return true;
     if (briefPersona !== (char.briefPersona || "")) return true;
     if (timeZone !== (char.timeZone || "")) return true;
+    if (region !== (char.region || "")) return true;
     if (avatar !== (char.avatar || null)) return true;
     const origTags = char.tags || [];
     if (tags.length !== origTags.length || tags.some((t, i) => t !== origTags[i])) return true;
@@ -1980,6 +1982,7 @@ function CharArchiveView({
       setBriefError("");
       setTimeZone(char.timeZone || "");
       setTimeZoneSearch(char.timeZone || "");
+      setRegion(char.region || "");
       setShowTimeZonePicker(false);
       setTags(char.tags || []);
       setAvatar(char.avatar || null);
@@ -2036,6 +2039,7 @@ function CharArchiveView({
           ? (trimmedBrief !== (char.briefPersona || "").trim() ? new Date().toISOString() : char.briefPersonaUpdatedAt)
           : undefined,
         timeZone: normalizedTimeZone,
+        region: region.trim() || undefined,
         tags,
         avatar: avatar ?? null
       }, createVersion);
@@ -2280,6 +2284,22 @@ function CharArchiveView({
               </div>
             ) : (
               <span className="char-archive-val">{timeZone || "SYSTEM"}</span>
+            )}
+          </div>
+        </div>
+        <div className="char-archive-row">
+          <div className="char-archive-cell" style={{ flex: 1 }}>
+            <span className="char-archive-label">Region</span>
+            {isEditing ? (
+              <input
+                className="char-archive-input ts-13 w-full text-left bg-[var(--c-input)]/50 border border-dashed border-[#666] font-inherit"
+                placeholder="例如：广东 深圳"
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                style={{ padding: "2px 4px" }}
+              />
+            ) : (
+              <span className="char-archive-val">{region || "未设置"}</span>
             )}
           </div>
         </div>

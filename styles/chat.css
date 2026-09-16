@@ -7112,3 +7112,172 @@
   background: currentColor;
   animation: chat-stream-cursor-blink 1s steps(2, start) infinite;
 }
+
+
+/* Character profile (WeChat-style contact page) */
+.character-profile-page,
+.character-moments-page {
+  background: var(--c-page-body-bg);
+}
+.character-profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0 24px;
+}
+.character-profile-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 0 12px;
+  padding: 18px 16px;
+  background: var(--c-card);
+  border-radius: 16px;
+}
+.character-profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--c-input);
+  flex-shrink: 0;
+}
+.character-profile-avatar img,
+.character-profile-avatar .chat-fallback-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.character-profile-hero-text {
+  min-width: 0;
+  flex: 1;
+  padding-top: 2px;
+}
+.character-profile-name {
+  font-size: calc(20px * var(--app-text-scale, 1));
+  font-weight: 650;
+  color: var(--c-text-title);
+  line-height: 1.25;
+  margin-bottom: 8px;
+  word-break: break-word;
+}
+.character-profile-meta {
+  font-size: calc(13px * var(--app-text-scale, 1));
+  color: var(--c-text);
+  opacity: 0.78;
+  line-height: 1.55;
+}
+.character-profile-card {
+  margin: 0 12px;
+  background: var(--c-card);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.character-profile-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  text-align: left;
+}
+.character-profile-row-label {
+  font-size: calc(16px * var(--app-text-scale, 1));
+  color: var(--c-text-title);
+  font-weight: 550;
+}
+.character-profile-moments-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--c-icon);
+}
+.character-profile-moments-preview img {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--c-input);
+}
+.character-profile-moments-count,
+.character-profile-moments-empty {
+  font-size: calc(13px * var(--app-text-scale, 1));
+  color: var(--c-text);
+  opacity: 0.7;
+}
+.character-profile-actions {
+  margin: 8px 12px 0;
+  background: var(--c-card);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.character-profile-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--c-card-border) 45%, transparent);
+  color: #07c160;
+  font-size: calc(16px * var(--app-text-scale, 1));
+  font-weight: 600;
+}
+.character-profile-action:last-child {
+  border-bottom: 0;
+}
+.character-profile-call-overlay {
+  z-index: 120;
+  align-items: flex-end;
+}
+.character-profile-call-sheet {
+  width: min(100%, 480px);
+  margin: 0 auto 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.character-profile-call-option,
+.character-profile-call-cancel {
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  padding: 15px 16px;
+  background: var(--c-card);
+  color: var(--c-text-title);
+  font-size: calc(16px * var(--app-text-scale, 1));
+  font-weight: 600;
+}
+.character-profile-call-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #07c160;
+}
+.character-profile-call-cancel {
+  color: var(--c-text);
+  font-weight: 500;
+}
+.character-moments-body {
+  padding: 8px 0 24px;
+}
+.character-moments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 64px 16px;
+  color: var(--c-text);
+  opacity: 0.6;
+  font-size: calc(14px * var(--app-text-scale, 1));
+}

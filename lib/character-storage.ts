@@ -147,6 +147,7 @@ export function exportCharacterAsJson(char: Character): void {
     avatar: char.avatar ?? "none",
     tags: char.tags || [],
     wechatID: char.wechatID || "",
+    region: char.region || "",
     timeZone: char.timeZone || "",
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -190,6 +191,7 @@ export function parseCharacterFromJson(
       personality: typeof src.personality === "string" && src.personality.trim() ? src.personality : undefined,
       tags: Array.isArray(src.tags) ? src.tags.map(String) : [],
       wechatID: typeof src.wechatID === "string" && src.wechatID.trim() ? src.wechatID : undefined,
+      region: typeof src.region === "string" && src.region.trim() ? src.region.trim() : undefined,
       timeZone: normalizeTimeZone(src.timeZone ?? src.timezone ?? src.time_zone),
     };
   } catch (e) {
@@ -407,6 +409,7 @@ export async function exportCharacterAsPng(char: Character): Promise<void> {
     avatar: "none",
     tags: char.tags || [],
     wechatID: char.wechatID || "",
+    region: char.region || "",
     timeZone: char.timeZone || "",
   };
   const jsonStr = JSON.stringify(payload);

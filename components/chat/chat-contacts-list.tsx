@@ -18,6 +18,7 @@ import { handleAcceptFriendRequest, triggerRejectReaction } from "@/lib/friend-r
 import { PageShell } from "@/components/ui/page-shell";
 import { pinyin } from "pinyin-pro";
 import { kvSet } from "@/lib/kv-db";
+import { dispatchOpenCharacterProfile } from "@/lib/chat-notification-events";
 import { scrollElementWithinContainer } from "@/lib/dom-scroll";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 import {
@@ -283,7 +284,13 @@ export function ChatContactsList({ onCloseApp, onSelectSession, onSelectMascot, 
                                             }}
                                             className="minimal-list-item"
                                         >
-                                            <div className="minimal-avatar-wrapper">
+                                            <div
+                                                className="minimal-avatar-wrapper"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    dispatchOpenCharacterProfile(char.id);
+                                                }}
+                                            >
                                                 {char.avatar ? (
                                                     <img src={char.avatar} className="w-full h-full object-cover rounded-full" alt="" />
                                                 ) : (

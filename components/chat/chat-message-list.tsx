@@ -8,6 +8,7 @@ import { Character } from "@/lib/character-types";
 import { resolveUserIdentity } from "@/lib/settings-storage";
 import type { UserIdentity } from "@/components/settings/user-identity";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
+import { dispatchOpenCharacterProfile } from "@/lib/chat-notification-events";
 import { clearRequestsForCharacter, dispatchFriendRequestUpdated } from "@/lib/friend-request-storage";
 import { UserProfilePanel } from "./user-profile-panel";
 import { PageShell } from "@/components/ui/page-shell";
@@ -820,7 +821,14 @@ function SessionItem({ session, onSelect, isPinned }: { session: ChatSession, on
                     ))}
                 </div>
             ) : (
-                <div className="minimal-avatar-wrapper">
+                <div
+                    className="minimal-avatar-wrapper"
+                    onClick={(e) => {
+                        if (!character) return;
+                        e.stopPropagation();
+                        dispatchOpenCharacterProfile(character.id);
+                    }}
+                >
                     {character?.avatar ? (
                         <img src={character.avatar} className="w-full h-full object-cover pointer-events-none rounded-full" alt="" />
                     ) : (
