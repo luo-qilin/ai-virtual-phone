@@ -260,13 +260,14 @@ const RICH_PATTERNS: {
         regex: /\[我向[^\]]+发起了视频通话\]/,
         build: () => ({ content: "", mediaType: "video_call" as const }),
     },
-        {
-              regex: /\[?我挂断了(?:群)?语音通话\]?/,
+    {
+        regex: /\[?我挂断了(?:群)?语音通话\]?/,
         build: () => ({ content: "", mediaType: "voice_call" as const, mediaData: { label: "hangup" } }),
     },
     {
         regex: /\[?我挂断了(?:群)?视频通话\]?/,
         build: () => ({ content: "", mediaType: "video_call" as const, mediaData: { label: "hangup" } }),
+    },
     // 群聊带主语宾语的格式（优先匹配）
     {
         regex: /\[([^\]]+)领取了([^\]]+)的红包\]/,
