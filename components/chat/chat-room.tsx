@@ -5490,7 +5490,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     }, [session.id, stopLoadMoreAnchorTracking]);
 
     // Shared handler: reload messages + re-trigger scroll-to-bottom after call ends
-        const returnFromCall = (hide: () => void) => {
+           const returnFromCall = (hide: () => void) => {
         hide();
         setCallMinimized(false);
         needsInitialScrollRef.current = true;
@@ -5501,7 +5501,11 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             return;
         }
         setPendingGenerate(true);
-        triggerReply();
+        window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(CHAT_REQUEST_REPLY_EVENT, {
+                detail: { sessionId: session.id },
+            }));
+        }, 800);
     };
 
     const editingMessage = editingMessageId ? messages.find(m => m.id === editingMessageId) : null;
