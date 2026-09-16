@@ -19,6 +19,7 @@ import { useCallKeyboardOffsetStyle } from "./use-call-keyboard-offset";
 import { isAndroidBrowser, isIOSDevice } from "./voice-input-platform";
 import { CallVolumeControl } from "./call-volume-control";
 import { startIncomingCallVibration } from "@/lib/call-vibration";
+import { startCallAmbient, stopCallAmbient } from "@/lib/call-ambient-sound";
 
 // ── Types ───────────────────────────────────────────
 
@@ -279,10 +280,18 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
                         const audioBlob = await synthesizeSpeech(speechText, voiceConfig);
                         if (stateRef.current === "ENDED") return;
                         if (audioBlob) {
+                            const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
                             const { promise, abort } = playCallAudio(audioBlob);
-                            audioAbortRef.current = abort;
-                            await promise;
-                            audioAbortRef.current = null;
+                            audioAbortRef.current = () => {
+                                abort();
+                                ambientStop();
+                            };
+                            try {
+                                await promise;
+                            } finally {
+                                ambientStop();
+                                audioAbortRef.current = null;
+                            }
                         }
                     } catch (e) {
                         console.warn("[GroupCall] TTS failed:", e);
@@ -417,6 +426,7 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
     // ── Hangup ──────────────────────────────────────
     const handleHangup = useCallback(() => {
         setCallState("ENDED");
+        stopCallAmbient();
         if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
         if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
         if (window.speechSynthesis) window.speechSynthesis.cancel();
@@ -435,6 +445,7 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
         setCallAudioSessionActive(true);
         return () => {
             stateRef.current = "ENDED";
+            stopCallAmbient();
             if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
             if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
             setCallAudioSessionActive(false);

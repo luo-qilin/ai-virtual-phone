@@ -23,6 +23,7 @@ import { CallSttWarningDialog, hideCallSttWarningPermanently, isCallSttWarningHi
 import { isAndroidBrowser, isIOSDevice } from "./voice-input-platform";
 import { CallVolumeControl } from "./call-volume-control";
 import { startIncomingCallVibration } from "@/lib/call-vibration";
+import { startCallAmbient, stopCallAmbient } from "@/lib/call-ambient-sound";
 
 // ── Types ───────────────────────────────────────────
 
@@ -120,6 +121,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
         setCallAudioSessionActive(true);
         return () => {
             stateRef.current = "ENDED";
+            stopCallAmbient();
             if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
             if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
             setCallAudioSessionActive(false);
@@ -342,6 +344,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 const endCall = useCallback((by: "user" | "assistant") => {
         if (stateRef.current === "ENDED") return;
         setCallState("ENDED");
+        stopCallAmbient();
         if (sttRef.current) {
             sttRef.current.abort();
             sttRef.current = null;
@@ -438,10 +441,18 @@ const endCall = useCallback((by: "user" | "assistant") => {
                     if (stateRef.current === "ENDED") return;
 
                     if (audioBlob) {
+                        const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
                         const { promise, abort } = playCallAudio(audioBlob);
-                        audioAbortRef.current = abort;
-                        await promise;
-                        audioAbortRef.current = null;
+                        audioAbortRef.current = () => {
+                            abort();
+                            ambientStop();
+                        };
+                        try {
+                            await promise;
+                        } finally {
+                            ambientStop();
+                            audioAbortRef.current = null;
+                        }
                     }
                 } catch (e) {
                     console.warn("[VoiceCall] TTS failed:", e);

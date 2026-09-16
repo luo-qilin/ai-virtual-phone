@@ -23,6 +23,7 @@ import { CallSttWarningDialog, hideCallSttWarningPermanently, isCallSttWarningHi
 import { isAndroidBrowser, isIOSDevice } from "./voice-input-platform";
 import { CallVolumeControl } from "./call-volume-control";
 import { startIncomingCallVibration } from "@/lib/call-vibration";
+import { startCallAmbient, stopCallAmbient } from "@/lib/call-ambient-sound";
 
 // ── Types ───────────────────────────────────────────
 
@@ -336,6 +337,7 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
         return () => {
             if (connectTimer) clearTimeout(connectTimer);
             if (timerRef.current) clearInterval(timerRef.current);
+            stopCallAmbient();
             stopCameraStream();
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -420,6 +422,7 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
     const endCall = useCallback((by: "user" | "assistant") => {
         if (stateRef.current === "ENDED") return;
         setCallState("ENDED");
+        stopCallAmbient();
         if (sttRef.current) { sttRef.current.abort(); sttRef.current = null; }
         if (audioAbortRef.current) { audioAbortRef.current(); audioAbortRef.current = null; }
         stopCameraStream();
@@ -504,10 +507,18 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
                     const audioBlob = await synthesizeSpeech(speechText, voiceConfig);
                     if (stateRef.current === "ENDED") return;
                     if (audioBlob && !isSpeakerMutedRef.current) {
+                        const ambientStop = startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
                         const { promise, abort } = playCallAudio(audioBlob);
-                        audioAbortRef.current = abort;
-                        await promise;
-                        audioAbortRef.current = null;
+                        audioAbortRef.current = () => {
+                            abort();
+                            ambientStop();
+                        };
+                        try {
+                            await promise;
+                        } finally {
+                            ambientStop();
+                            audioAbortRef.current = null;
+                        }
                     }
                 } catch (e) { console.warn("[VideoCall] TTS failed:", e); }
             }

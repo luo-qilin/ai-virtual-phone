@@ -44,7 +44,8 @@ import { downloadFile } from "@/lib/download-utils";
 import { getSchemes, saveScheme, deleteScheme, type CSSScheme } from "@/lib/css-scheme-storage";
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { KeyboardAutoSendDebounceItem } from "@/components/chat/keyboard-auto-send-debounce-item";
-import { ChevronRight, Image as ImageIcon, Video, Mic, LogOut, UserMinus, UserPlus, Users, Pin, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, type LucideIcon } from "lucide-react";
+import { ChevronRight, Image as ImageIcon, Video, Mic, LogOut, UserMinus, UserPlus, Users, Pin, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Music, type LucideIcon } from "lucide-react";
+import { AMBIENT_SOUND_OPTIONS } from "@/lib/call-ambient-sound";
 import { BINDING_ACCENTS, CONTENT_APP_ACCENTS } from "@/lib/ui-accent-colors";
 import CSSSchemeBar from "@/components/ui/css-scheme-picker";
 import { ConfirmDialog } from "@/components/ui/modal";
@@ -409,6 +410,8 @@ export function ChatSettingsPanel({
         return (latest as Record<string, unknown>)?.customCSS as string || session.customCSS || "";
     });
 
+    const [callAmbientSound, setCallAmbientSound] = useState(session.callAmbientSound || "none");
+    const [callAmbientVolume, setCallAmbientVolume] = useState(typeof session.callAmbientVolume === "number" ? session.callAmbientVolume : 0.25);
     const [showConfirmClear, setShowConfirmClear] = useState(false);
     const [showConfirmClearOffline, setShowConfirmClearOffline] = useState(false);
     const [showConfirmClearTools, setShowConfirmClearTools] = useState(false);
@@ -1245,6 +1248,68 @@ export function ChatSettingsPanel({
                         </div>
                         <input type="file" accept="image/*" onChange={e => handleImageUpload(e, setVoiceBackground, "voiceBackground")} className="hidden" />
                     </label>
+                    <div className="menu-item flex-col items-start gap-2 py-3" style={{ cursor: "default" }}>
+                        <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-3">
+                                <ChatInfoIcon icon={Music} color={BINDING_ACCENTS.voice} />
+                                <div className="menu-label-group">
+                                    <span className="menu-label">通话伴随环境音 (BGM)</span>
+                                    <span className="menu-desc">角色开口说话时同步伴随轻柔播放，说话结束自动停止</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="w-full pl-9 pr-1 flex flex-col gap-2">
+                            <select
+                                className="w-full bg-[var(--c-input)] border border-[var(--c-border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--c-text)] outline-none"
+                                value={AMBIENT_SOUND_OPTIONS.some(o => o.id === callAmbientSound) ? callAmbientSound : "custom"}
+                                onChange={e => {
+                                    const next = e.target.value;
+                                    setCallAmbientSound(next);
+                                    updateSession({ callAmbientSound: next });
+                                }}
+                            >
+                                {AMBIENT_SOUND_OPTIONS.map(opt => (
+                                    <option key={opt.id} value={opt.id}>
+                                        {opt.label} ({opt.description})
+                                    </option>
+                                ))}
+                            </select>
+                            {(!AMBIENT_SOUND_OPTIONS.some(o => o.id === callAmbientSound && o.id !== "custom") || callAmbientSound === "custom") && (
+                                <input
+                                    type="text"
+                                    className="w-full bg-[var(--c-input)] border border-[var(--c-border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--c-text)] outline-none"
+                                    placeholder="输入音频直链 (https://.../*.mp3)"
+                                    value={callAmbientSound === "custom" ? "" : callAmbientSound}
+                                    onChange={e => {
+                                        const v = e.target.value.trim();
+                                        setCallAmbientSound(v || "custom");
+                                        updateSession({ callAmbientSound: v });
+                                    }}
+                                />
+                            )}
+                            {callAmbientSound !== "none" && (
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[11px] opacity-70 whitespace-nowrap">伴声音量</span>
+                                    <input
+                                        type="range"
+                                        min={0.05}
+                                        max={1}
+                                        step={0.05}
+                                        value={callAmbientVolume}
+                                        onChange={e => {
+                                            const v = Number(e.target.value);
+                                            setCallAmbientVolume(v);
+                                            updateSession({ callAmbientVolume: v });
+                                        }}
+                                        className="flex-1 accent-[var(--c-accent)]"
+                                    />
+                                    <span className="text-[11px] font-mono opacity-80 w-8 text-right">
+                                        {Math.round(callAmbientVolume * 100)}%
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Advanced */}

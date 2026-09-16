@@ -46,6 +46,10 @@ export type ChatSession = {
     alias?: string;
     videoBackground?: string;
     voiceBackground?: string;
+    /** 通话中角色说话时伴随的环境音 (none | rain | wind | white_noise | waves | bird | cicada | crowd | URL) */
+    callAmbientSound?: string;
+    /** 通话伴随环境音音量 (0..1, 默认 0.25) */
+    callAmbientVolume?: number;
     isBlacklisted?: boolean;
     customCSS?: string;
     isMuted?: boolean;
