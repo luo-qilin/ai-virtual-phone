@@ -14,6 +14,7 @@ import { AlertCircle } from "lucide-react";
 import { kvGet, kvSet, registerKvMigration } from "@/lib/kv-db";
 import { onUserComment, MOMENT_PHOTO_GENERATION_FAILED_EVENT } from "@/lib/moments-engine";
 import { GeneratedImageErrorDialog } from "./generated-image-error-dialog";
+import { dispatchOpenUserProfile } from "@/lib/chat-notification-events";
 
 const COVER_ASSET_KEY = "moments_cover_asset_id";
 registerKvMigration(COVER_ASSET_KEY);
@@ -492,7 +493,12 @@ export function MomentsFeed({ onCloseApp }: MomentsFeedProps) {
                         style={{ paddingTop: "calc(var(--page-header-safe-top, 48px) + var(--page-header-content-height, 54px) + 160px)" }}
                     >
                         {/* Avatar */}
-                        <div className="feed-profile-avatar w-[72px] h-[72px] rounded-full border-[3px] border-[var(--c-page-body-bg)] bg-[var(--c-input)] overflow-hidden flex items-center justify-center translate-x-[2px] pointer-events-auto">
+                        <div
+                            className="feed-profile-avatar w-[72px] h-[72px] rounded-full border-[3px] border-[var(--c-page-body-bg)] bg-[var(--c-input)] overflow-hidden flex items-center justify-center translate-x-[2px] pointer-events-auto cursor-pointer"
+                            onClick={() => dispatchOpenUserProfile()}
+                            role="button"
+                            aria-label="查看我的主页"
+                        >
                             {userIdentity?.avatarUrl ? (
                                 <img src={userIdentity.avatarUrl} alt="" className="feed-profile-avatar-image w-full h-full object-cover" />
                             ) : (

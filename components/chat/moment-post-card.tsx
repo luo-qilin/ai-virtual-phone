@@ -22,6 +22,7 @@ import { retryMomentGeneratedPhoto } from "@/lib/generated-image-retry";
 import { GeneratedImageErrorDialog } from "./generated-image-error-dialog";
 import { Trash2, MoreHorizontal, MapPin, Heart, MessageCircle, Pencil } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui";
+import { dispatchOpenCharacterProfile, dispatchOpenUserProfile } from "@/lib/chat-notification-events";
 
 type Props = {
     post: MomentPost;
@@ -104,6 +105,11 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
 
     const authorName = getAuthorName(post.authorType, post.authorId);
     const authorAvatar = getAuthorAvatar(post.authorType, post.authorId);
+
+    const openAuthorProfile = (authorType: "user" | "character" | "npc", authorId: string) => {
+        if (authorType === "character") dispatchOpenCharacterProfile(authorId);
+        else if (authorType === "user") dispatchOpenUserProfile();
+    };
 
     // Time formatting
     const timeAgo = formatTimeAgo(post.createdAt);
@@ -274,7 +280,10 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
             {/* Header row: avatar + name */}
             <div className="feed-post-header flex items-center gap-3 mb-3">
                 <div
-                    className="feed-post-author-avatar w-[40px] h-[40px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center"
+                    className="feed-post-author-avatar w-[40px] h-[40px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center cursor-pointer"
+                    onClick={() => openAuthorProfile(post.authorType, post.authorId)}
+                    role="button"
+                    aria-label="查看主页"
                 >
                     {authorAvatar ? (
                         <img src={authorAvatar} alt="" className="feed-post-author-avatar-image w-full h-full object-cover" />
@@ -582,7 +591,11 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
                                             onClick={(event) => handleCommentPress(root, event)}
                                         >
                                             <div
-                                                className="feed-comment-avatar feed-comment-avatar-root w-[32px] h-[32px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center"
+                                                className="feed-comment-avatar feed-comment-avatar-root w-[32px] h-[32px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center cursor-pointer"
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    openAuthorProfile(root.authorType, root.authorId);
+                                                }}
                                             >
                                                 {rootAvatar ? (
                                                     <img src={rootAvatar} alt="" className="feed-comment-avatar-image w-full h-full object-cover" />
@@ -667,7 +680,11 @@ export function MomentPostCard({ post, onUpdate, onRequestDelete, onOpenCommentC
                                                             onClick={(event) => handleCommentPress(reply, event)}
                                                         >
                                                             <div
-                                                                className="feed-comment-avatar feed-comment-avatar-child w-[22px] h-[22px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center mt-[2px]"
+                                                                className="feed-comment-avatar feed-comment-avatar-child w-[22px] h-[22px] rounded-full shrink-0 bg-[var(--c-input)] overflow-hidden flex items-center justify-center mt-[2px] cursor-pointer"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    openAuthorProfile(reply.authorType, reply.authorId);
+                                                                }}
                                                             >
                                                                 {replyAvatar ? (
                                                                     <img src={replyAvatar} alt="" className="feed-comment-avatar-image w-full h-full object-cover" />

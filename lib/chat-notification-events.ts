@@ -31,3 +31,10 @@ export function dispatchOpenCharacterProfile(characterId: string): void {
   if (typeof window === "undefined" || !characterId) return;
   window.dispatchEvent(new CustomEvent(CHAT_OPEN_CHARACTER_PROFILE_EVENT, { detail: { characterId } }));
 }
+
+export const CHAT_OPEN_USER_PROFILE_EVENT = "ai-chat-open-user-profile";
+
+export function dispatchOpenUserProfile(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(CHAT_OPEN_USER_PROFILE_EVENT));
+}
