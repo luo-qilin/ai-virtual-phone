@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, Image as ImageIcon, MessageSquare, Phone, Video } from "lucide-react";
 import { PageShell } from "@/components/ui/page-shell";
 import { ChatFallbackAvatar } from "./chat-fallback-avatar";
 import { MomentPostCard } from "./moment-post-card";
 import type { Character } from "@/lib/character-types";
+import { getChatImageFromIndexedDB } from "@/lib/chat-asset-storage";
 import { getAllPosts } from "@/lib/moments-storage";
 import type { MomentPost } from "@/lib/moments-types";
 
@@ -25,10 +26,20 @@ type CharacterProfilePageProps = {
     onStartCall: (type: "voice" | "video") => void;
 };
 
+function collectMomentPhotoRefs(posts: MomentPost[]): string[] {
+    const refs: string[] = [];
+    for (const post of posts) {
+        if (post.photoUrl) refs.push(post.photoUrl);
+        if (refs.length >= 3) break;
+    }
+    return refs;
+}
+
 export function CharacterProfilePage({ character, onClose, onSendMessage, onStartCall }: CharacterProfilePageProps) {
     const [showMoments, setShowMoments] = useState(false);
     const [showCallPicker, setShowCallPicker] = useState(false);
     const [momentsTick, setMomentsTick] = useState(0);
+    const [previewPhotos, setPreviewPhotos] = useState<string[]>([]);
 
     const posts = useMemo(() => {
         void momentsTick;
@@ -37,14 +48,28 @@ export function CharacterProfilePage({ character, onClose, onSendMessage, onStar
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [character.id, momentsTick]);
 
-    const previewPhotos = useMemo(() => {
-        const urls: string[] = [];
-        for (const post of posts) {
-            if (post.photoUrl) urls.push(post.photoUrl);
-            if (urls.length >= 3) break;
+    const photoRefs = useMemo(() => collectMomentPhotoRefs(posts), [posts]);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function resolvePhotos() {
+            const urls: string[] = [];
+            for (const ref of photoRefs) {
+                if (ref.startsWith("asset://")) {
+                    const resolved = await getChatImageFromIndexedDB(ref.slice(8));
+                    if (resolved) urls.push(resolved);
+                } else if (ref.startsWith("data:") || ref.startsWith("http://") || ref.startsWith("https://") || ref.startsWith("blob:")) {
+                    urls.push(ref);
+                }
+                if (urls.length >= 3) break;
+            }
+            if (!cancelled) setPreviewPhotos(urls);
         }
-        return urls;
-    }, [posts]);
+        void resolvePhotos();
+        return () => {
+            cancelled = true;
+        };
+    }, [photoRefs]);
 
     if (showMoments) {
         return (
@@ -86,7 +111,7 @@ export function CharacterProfilePage({ character, onClose, onSendMessage, onStar
                             <span className="character-profile-moments-preview">
                                 {previewPhotos.length > 0 ? (
                                     previewPhotos.map((url, index) => (
-                                        <img key={`${url}-${index}`} src={url} alt="" />
+                                        <img key={`${index}-${url.slice(0, 24)}`} src={url} alt="" />
                                     ))
                                 ) : posts.length > 0 ? (
                                     <span className="character-profile-moments-count">{posts.length}条动态</span>
