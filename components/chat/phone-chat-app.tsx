@@ -353,7 +353,12 @@ export const PhoneChatApp = memo(function PhoneChatApp({ onClose, initialSession
             )}
             {showUserProfileOverlay && (
                 <div className="character-profile-layer absolute inset-0 z-[80]">
-                    <UserProfilePanel onClose={() => setShowUserProfileOverlay(false)} className="absolute inset-0" />
+                    <CharacterProfilePage
+                        variant="user"
+                        onClose={() => setShowUserProfileOverlay(false)}
+                        onSendMessage={() => setShowUserProfileOverlay(false)}
+                        onStartCall={() => setShowUserProfileOverlay(false)}
+                    />
                 </div>
             )}
             {profileCharacter && (
