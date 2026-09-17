@@ -711,6 +711,28 @@ export function ChatSettingsPanel({
         }
     };
 
+    const handleAmbientFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (!file.type.startsWith("audio/") && !/\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i.test(file.name)) {
+            alert("请上传音频文件");
+            return;
+        }
+        try {
+            const { saveChatImageToIndexedDB } = await import("@/lib/chat-asset-storage");
+            const id = await saveChatImageToIndexedDB(file);
+            const stored = `asset://${id}`;
+            setCallAmbientSound(stored);
+            updateSession({ callAmbientSound: stored });
+            const { startCallAmbient } = await import("@/lib/call-ambient-sound");
+            startCallAmbient(stored, callAmbientVolume);
+        } catch (error) {
+            console.error("Failed to save ambient audio", error);
+            alert("音频保存失败，请重试");
+        }
+    };
+
     // Group video: per-participant background upload
     const [groupVideoBgs, setGroupVideoBgs] = useState<Record<string, string>>(session.groupVideoBackgrounds || {});
     const handleGroupVideoBgUpload = async (e: React.ChangeEvent<HTMLInputElement>, participantKey: string) => {
@@ -1261,7 +1283,7 @@ export function ChatSettingsPanel({
                                 <ChatInfoIcon icon={Music} color={BINDING_ACCENTS.voice} />
                                 <div className="menu-label-group">
                                     <span className="menu-label">通话伴随环境音 (BGM)</span>
-                                    <span className="menu-desc">接通后持续播放环境音，增加沉浸感</span>
+                                    <span className="menu-desc">接通后持续播放。可选预设、粘贴音频链接，或直接上传音频文件</span>
                                 </div>
                             </div>
                         </div>
@@ -1287,8 +1309,8 @@ export function ChatSettingsPanel({
                                 <input
                                     type="text"
                                     className="w-full bg-[var(--c-input)] border border-[var(--c-border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--c-text)] outline-none"
-                                    placeholder="输入音频直链 (https://.../*.mp3)"
-                                    value={callAmbientSound === "custom" ? "" : callAmbientSound}
+                                    placeholder={callAmbientSound.startsWith("asset://") ? "已上传本地音频，也可改贴直链" : "输入音频直链 (https://.../*.mp3)"}
+                                    value={callAmbientSound === "custom" || callAmbientSound.startsWith("asset://") ? "" : callAmbientSound}
                                     onChange={e => {
                                         const v = e.target.value.trim();
                                         setCallAmbientSound(v || "custom");
@@ -1297,6 +1319,17 @@ export function ChatSettingsPanel({
                                         else stopCallAmbient();
                                     }}
                                 />
+                            )}
+                            {(!AMBIENT_SOUND_OPTIONS.some(o => o.id === callAmbientSound && o.id !== "custom") || callAmbientSound === "custom") && (
+                                <label className="w-full bg-[var(--c-input)] border border-dashed border-[var(--c-border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--c-text)] outline-none cursor-pointer text-center">
+                                    {callAmbientSound.startsWith("asset://") ? "重新上传音频文件" : "上传音频文件"}
+                                    <input
+                                        type="file"
+                                        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+                                        className="hidden"
+                                        onChange={handleAmbientFileUpload}
+                                    />
+                                </label>
                             )}
                             {callAmbientSound !== "none" && (
                                 <div className="flex items-center gap-2 mt-1">

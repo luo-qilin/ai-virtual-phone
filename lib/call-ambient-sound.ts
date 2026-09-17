@@ -413,6 +413,27 @@ export function startCallAmbient(soundConfig?: string | null, volume: number = 0
 
     const effectiveVolume = typeof volume === "number" && !isNaN(volume) ? volume : 0.25;
 
+    if (soundConfig.startsWith("asset://")) {
+        let cancelled = false;
+        let innerStop: (() => void) | null = null;
+        const stopFn = () => {
+            cancelled = true;
+            if (innerStop) innerStop();
+        };
+        _activeStopFn = stopFn;
+        import("@/lib/chat-asset-storage").then(({ getChatImageFromIndexedDB }) => {
+            if (cancelled) return;
+            return getChatImageFromIndexedDB(soundConfig.slice("asset://".length));
+        }).then(url => {
+            if (cancelled || !url) return;
+            innerStop = startCustomAudioAmbient(url, effectiveVolume);
+        }).catch(() => {});
+        return () => {
+            stopFn();
+            if (_activeStopFn === stopFn) _activeStopFn = null;
+        };
+    }
+
     let stopFn: () => void;
     if (soundConfig.startsWith("http://") || soundConfig.startsWith("https://") || soundConfig.startsWith("data:")) {
         stopFn = startCustomAudioAmbient(soundConfig, effectiveVolume);
