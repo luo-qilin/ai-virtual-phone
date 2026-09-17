@@ -345,9 +345,13 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // Track first connect
     useEffect(() => {
-        if (callState !== "CONNECTING" && !hasConnectedRef.current) {
+        if (callState === "IDLE") {
             hasConnectedRef.current = true;
             startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
+            return;
+        }
+        if (callState === "CONNECTING" || callState === "ENDED") {
+            stopCallAmbient();
         }
     }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 

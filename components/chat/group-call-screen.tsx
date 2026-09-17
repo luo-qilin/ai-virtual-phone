@@ -193,9 +193,13 @@ export function GroupCallScreen({ type, session, characters, onEnd, initiator = 
     }, []);
 
     useEffect(() => {
-        if (callState !== "CONNECTING" && !hasConnectedRef.current) {
+        if (callState === "IDLE") {
             hasConnectedRef.current = true;
             startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
+            return;
+        }
+        if (callState === "CONNECTING" || callState === "ENDED") {
+            stopCallAmbient();
         }
     }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 

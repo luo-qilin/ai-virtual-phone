@@ -254,10 +254,13 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
     // Track first connect
     useEffect(() => {
-        if (callState !== "CONNECTING" && !hasConnectedRef.current) {
+        if (callState === "IDLE") {
             hasConnectedRef.current = true;
-            // 接通时就开始播放环境音（一直放），直到挂断
             startCallAmbient(session.callAmbientSound, session.callAmbientVolume);
+            return;
+        }
+        if (callState === "CONNECTING" || callState === "ENDED") {
+            stopCallAmbient();
         }
     }, [callState, session.callAmbientSound, session.callAmbientVolume]);
 
