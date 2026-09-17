@@ -21,7 +21,21 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
     const [books, setBooks] = useState<WorldBookConfig[]>([]);
     const [activeBookId, setActiveBookId] = useState<string>("");
     const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+    const [entrySearch, setEntrySearch] = useState("");
     const [editingUid, setEditingUid] = useState<string | null>(null);
+
+    useEffect(() => {
+        const onFocus = (event: Event) => {
+            const detail = (event as CustomEvent).detail || {};
+            if (detail.page && detail.page !== "worldbook") return;
+            if (detail.parentId) setActiveBookId(detail.parentId);
+            if (detail.query) setEntrySearch(String(detail.query));
+            if (detail.entryId) setEditingUid(detail.entryId);
+            setViewMode("detail");
+        };
+        window.addEventListener("settings-focus-entry", onFocus);
+        return () => window.removeEventListener("settings-focus-entry", onFocus);
+    }, []);
     const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{ type: 'book' | 'entry', id: string } | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [expandUid, setExpandUid] = useState<string | null>(null);
@@ -322,7 +336,13 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
     // --- Entry Level Operations ---
     const activeBook = books.find(b => b.id === activeBookId);
 
-    const visibleEntries = activeBook?.entries || [];
+    const visibleEntries = (activeBook?.entries || []).filter(entry => {
+        const q = entrySearch.trim().toLowerCase();
+        if (!q) return true;
+        const keys = Array.isArray(entry.key) ? entry.key.join(" ") : String(entry.key || "");
+        return [entry.comment, entry.content, keys, entry.uid]
+            .some(value => String(value || "").toLowerCase().includes(q));
+    });
 
     // ── 条目左滑操作（微信式：左滑露出「新增/删除」） ──
     const swipe = useSwipeActions();
@@ -534,6 +554,14 @@ export function WorldBookManager({ isActive = true }: { isActive?: boolean } = {
                     {/* Detail View — matches preset-manager layout */}
                     {activeBook && (
                         <div className="flex flex-col gap-4 pb-6">
+                            <input
+                                type="search"
+                                value={entrySearch}
+                                onChange={e => setEntrySearch(e.target.value)}
+                                placeholder="搜索这本世界书里的具体条目，例如：秘境与去处"
+                                className="ui-input"
+                                style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--c-bg, #fff)" }}
+                            />
                             <div className="flex justify-center gap-2">
                                 <button
                                     type="button"

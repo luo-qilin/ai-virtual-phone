@@ -8,8 +8,11 @@ import {
     createPreset,
     parsePresetFromJson,
     resetBuiltinPreset,
+    loadBindingConfig,
+    saveBindingConfig,
     UNSUPPORTED_IMPORT_FORMAT,
 } from "@/lib/settings-storage";
+import { Toggle } from "@/components/ui/form";
 import type { GenerationParameterKey, PresetConfig, Prompt, PromptOrderEntry } from "@/lib/settings-types";
 import {
     GENERATION_PARAMETER_KEYS,
@@ -248,6 +251,13 @@ function buildPromptRenderItems(
     return result;
 }
 
+function isTgbreakLikePreset(preset: PresetConfig): boolean {
+    const name = `${preset.name || ""} ${preset.description || ""}`.toLowerCase();
+    if (name.includes("tgbreak") || name.includes("tgd") || name.includes("日月西破限")) return true;
+    const names = (preset.prompts || []).map(p => p.name || "");
+    return names.some(n => n.includes("😾😾别关")) && names.some(n => n.includes("瑟瑟"));
+}
+
 const MASCOT_PRESET_STORAGE_TOOL_NAMES = new Set([
     "创建剧情预设",
     "克隆内置预设",
@@ -306,6 +316,21 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
     const [appFilterMode, setAppFilterMode] = useState<AppFilterMode>("highlight");
     const [appFilterTags, setAppFilterTags] = useState<Set<string>>(new Set()); // 选中的大类 tag 集合（可多选）
     const [expandedCollapseGroups, setExpandedCollapseGroups] = useState<Set<string>>(new Set()); // 已展开的折叠组 key
+    const [entrySearch, setEntrySearch] = useState("");
+    const [activeBoundPresetId, setActiveBoundPresetId] = useState("");
+
+    useEffect(() => {
+        const onFocus = (event: Event) => {
+            const detail = (event as CustomEvent).detail || {};
+            if (detail.page && detail.page !== "presets") return;
+            if (detail.parentId) setEditingId(detail.parentId);
+            if (detail.query) setEntrySearch(String(detail.query));
+            if (detail.entryId) setEditingPromptId(detail.entryId);
+            setViewMode("detail");
+        };
+        window.addEventListener("settings-focus-entry", onFocus);
+        return () => window.removeEventListener("settings-focus-entry", onFocus);
+    }, []);
 
     const toggleFilterTag = useCallback((tag: string) => {
         setAppFilterTags(prev => {
@@ -328,6 +353,7 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
         }
         setCustomApps(loadInstalledCustomApps());
         setIsLoaded(true);
+        try { setActiveBoundPresetId(loadBindingConfig().globalDefaults?.presetId || ""); } catch {}
     }, []);
 
     useEffect(() => {
@@ -335,9 +361,14 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
         const refreshPresets = () => setPresets(loadPresets());
         window.addEventListener(CUSTOM_APPS_UPDATED_EVENT, refreshCustomApps);
         window.addEventListener("settings-presets-updated", refreshPresets);
+        const refreshBound = () => {
+            try { setActiveBoundPresetId(loadBindingConfig().globalDefaults?.presetId || ""); } catch {}
+        };
+        window.addEventListener("settings-bindings-updated", refreshBound);
         return () => {
             window.removeEventListener(CUSTOM_APPS_UPDATED_EVENT, refreshCustomApps);
             window.removeEventListener("settings-presets-updated", refreshPresets);
+            window.removeEventListener("settings-bindings-updated", refreshBound);
         };
     }, []);
 
@@ -359,6 +390,17 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
             : [],
         [activePreset, appFilterMode, appFilterTags, expandedCollapseGroups, tagGroups],
     );
+
+    const listedPromptRenderItems = useMemo(() => {
+        const q = entrySearch.trim().toLowerCase();
+        if (!q) return promptRenderItems;
+        return promptRenderItems.filter(item => {
+            if (item.type !== "item") return false;
+            const prompt = item.prompt;
+            return [prompt.name, prompt.content, prompt.identifier]
+                .some(value => String(value || "").toLowerCase().includes(q));
+        });
+    }, [promptRenderItems, entrySearch]);
     const visiblePromptIds = useMemo(
         () => new Set(
             promptRenderItems
@@ -605,6 +647,21 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
         setPresets(newPresets);
         savePresets(newPresets);
     }, []);
+
+    const toggleBoundPreset = useCallback((presetId: string, enabled: boolean) => {
+        const config = loadBindingConfig();
+        const builtinId = presets.find(p => p.builtIn)?.id;
+        const nextId = enabled ? presetId : (builtinId || config.globalDefaults?.presetId || presetId);
+        const next = {
+            ...config,
+            globalDefaults: {
+                ...config.globalDefaults,
+                presetId: nextId,
+            },
+        };
+        saveBindingConfig(next);
+        setActiveBoundPresetId(nextId);
+    }, [presets]);
 
     const addPreset = useCallback(() => {
         const newPreset = createPreset("新预设");
@@ -1101,7 +1158,22 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                                     </div>
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="menu-desc ts-12">条目 {preset.prompts?.length || 0}</span>
-                                        <ChevronLeft size={16} style={{ transform: "rotate(180deg)", opacity: 0.4 }} />
+                                        {!preset.builtIn ? (
+                                            <span
+                                                onClick={event => {
+                                                    event.stopPropagation();
+                                                    toggleBoundPreset(preset.id, activeBoundPresetId !== preset.id);
+                                                }}
+                                                onKeyDown={event => event.stopPropagation()}
+                                            >
+                                                <Toggle
+                                                    checked={activeBoundPresetId === preset.id}
+                                                    onChange={checked => toggleBoundPreset(preset.id, checked)}
+                                                />
+                                            </span>
+                                        ) : (
+                                            <ChevronLeft size={16} style={{ transform: "rotate(180deg)", opacity: 0.4 }} />
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -1115,6 +1187,14 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                         const enabledGenerationParameters = resolveEnabledGenerationParameters(preset);
                         return (
                             <div key={preset.id} className="flex flex-col gap-4 pb-[24px]">
+                                <input
+                                    type="search"
+                                    value={entrySearch}
+                                    onChange={e => setEntrySearch(e.target.value)}
+                                    placeholder="搜索这条预设里的具体条目，例如：微信体沉浸指令"
+                                    className="ui-input"
+                                    style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--c-bg, #fff)" }}
+                                />
                                 <div className="flex justify-center gap-2">
                                     <button
                                         type="button"
@@ -1467,7 +1547,7 @@ export function PresetManager({ isActive = true }: { isActive?: boolean } = {}) 
                                         onTouchEnd={onPromptTouchEnd}
                                         onTouchCancel={onPromptTouchEnd}
                                     >
-                                        {promptRenderItems.flatMap((renderItem, _flatIndex) => {
+                                        {(entrySearch.trim() ? listedPromptRenderItems : promptRenderItems).flatMap((renderItem, _flatIndex) => {
                                             const toggleExpand = (gKey: string) => {
                                                 setExpandedCollapseGroups(prev => {
                                                     const next = new Set(prev);

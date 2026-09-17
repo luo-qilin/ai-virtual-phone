@@ -289,6 +289,7 @@ export function DataManagement({ onNotice }: DataManagementProps) {
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const [restartNotice, setRestartNotice] = useState<RestartNotice | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [moduleSearch, setModuleSearch] = useState("");
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [persistSupported, setPersistSupported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -613,6 +614,34 @@ export function DataManagement({ onNotice }: DataManagementProps) {
   return (
     <div className="page-menu data-management-menu" style={{ padding: 0 }}>
       <div className="data-section">
+        <input
+          type="search"
+          value={moduleSearch}
+          onChange={e => setModuleSearch(e.target.value)}
+          placeholder="搜索数据模块，例如：聊天数据、设置与规则"
+          className="ui-input"
+          style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--c-bg, #fff)", marginBottom: 12 }}
+        />
+        {moduleSearch.trim() ? (
+          <div className="menu-group" style={{ marginBottom: 12 }}>
+            {DATA_MODULES.filter(module => {
+              const q = moduleSearch.trim().toLowerCase();
+              const snap = snapshot?.modules.find(item => item.moduleId === module.id);
+              const details = (snap?.details || []).map(d => d.label).join(" ");
+              return [module.label, module.id, details].join(" ").toLowerCase().includes(q);
+            }).map(module => {
+              const snap = snapshot?.modules.find(item => item.moduleId === module.id);
+              return (
+                <div key={module.id} className="menu-item data-readonly-item">
+                  <div className="menu-label-group">
+                    <span className="menu-label">{module.label}</span>
+                    <span className="menu-desc">{snap ? `${snap.percent}% · ${formatBytes(snap.bytes)}` : module.id}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
         <DataSectionTitle>Module Breakdown</DataSectionTitle>
         <div className="menu-group">
           {snapshot?.modules.length ? (

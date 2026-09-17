@@ -197,7 +197,21 @@ export function RegexManager({ isActive = true }: { isActive?: boolean } = {}) {
     const [groups, setGroups] = useState<RegexConfig[]>([]);
     const [activeGroupId, setActiveGroupId] = useState<string>("");
     const [viewMode, setViewMode] = useState<"list" | "detail">("list");
+    const [entrySearch, setEntrySearch] = useState("");
     const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const onFocus = (event: Event) => {
+            const detail = (event as CustomEvent).detail || {};
+            if (detail.page && detail.page !== "regex") return;
+            if (detail.parentId) setActiveGroupId(detail.parentId);
+            if (detail.query) setEntrySearch(String(detail.query));
+            if (detail.entryId) setEditingRuleId(detail.entryId);
+            setViewMode("detail");
+        };
+        window.addEventListener("settings-focus-entry", onFocus);
+        return () => window.removeEventListener("settings-focus-entry", onFocus);
+    }, []);
     const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{ type: 'group' | 'rule', id: string } | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
@@ -381,7 +395,12 @@ export function RegexManager({ isActive = true }: { isActive?: boolean } = {}) {
     // --- Rule Level Operations ---
     const activeGroup = groups.find(g => g.id === activeGroupId);
 
-    const visibleRules = activeGroup?.rules || [];
+    const visibleRules = (activeGroup?.rules || []).filter(rule => {
+        const q = entrySearch.trim().toLowerCase();
+        if (!q) return true;
+        return [rule.scriptName, rule.findRegex, rule.replaceString, rule.id]
+            .some(value => String(value || "").toLowerCase().includes(q));
+    });
 
     // ── 规则左滑操作（微信式：左滑露出「新增/删除」） ──
     const swipe = useSwipeActions();
@@ -592,6 +611,14 @@ export function RegexManager({ isActive = true }: { isActive?: boolean } = {}) {
                 <>
                     {activeGroup && (
                         <div className="flex flex-col gap-4 pb-6">
+                            <input
+                                type="search"
+                                value={entrySearch}
+                                onChange={e => setEntrySearch(e.target.value)}
+                                placeholder="搜索这个正则组里的具体规则"
+                                className="ui-input"
+                                style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--c-bg, #fff)" }}
+                            />
                             <div className="flex justify-center gap-2">
                                 <button
                                     type="button"

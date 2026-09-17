@@ -111,6 +111,7 @@ export function ToolboxSettings() {
     const [mcpServers, setMcpServers] = useState<McpServerConfig[]>([]);
     const [internalCapabilities, setInternalCapabilities] = useState<InternalCapabilityConfig[]>([]);
     const [customAppTools, setCustomAppTools] = useState<CustomAppToolEntry[]>([]);
+    const [toolSearch, setToolSearch] = useState("");
     const [editRestPackageId, setEditRestPackageId] = useState<string | null>(null);
     const [editRestId, setEditRestId] = useState<string | null>(null);
     const [editCompositePackageId, setEditCompositePackageId] = useState<string | null>(null);
@@ -793,9 +794,28 @@ export function ToolboxSettings() {
         ? customAppTools.find(tool => customAppToolKey(tool) === editCustomAppToolKey) ?? null
         : null;
     const exportEntries = buildExportEntries();
+    const tq = toolSearch.trim().toLowerCase();
+    const hit = (...vals: Array<string | undefined | null>) =>
+        !tq || vals.some(v => String(v || "").toLowerCase().includes(tq));
+    const shownRestTools = singleRestTools.filter(t => hit(t.name, t.description, t.id));
+    const shownRestPackages = restPackages.filter(pkg =>
+        hit(pkg.name, pkg.description, pkg.id) || (pkg.tools || []).some((t: { name?: string; description?: string }) => hit(t.name, t.description))
+    );
+    const shownCompositeTools = singleCompositeTools.filter(t => hit(t.name, t.description, t.id));
+    const shownCompositePackages = compositePackages.filter(pkg =>
+        hit(pkg.name, pkg.description, pkg.id)
+    );
 
     return (
         <div className="flex flex-col gap-[24px] h-full">
+            <input
+                type="search"
+                value={toolSearch}
+                onChange={e => setToolSearch(e.target.value)}
+                placeholder="搜索工具名称，例如：查看网页、天气查询"
+                className="ui-input"
+                style={{ position: "sticky", top: 0, zIndex: 8, background: "var(--c-bg, #fff)" }}
+            />
             <input
                 ref={importFileRef}
                 type="file"
@@ -849,7 +869,7 @@ export function ToolboxSettings() {
                 </div>
             ) : (
                 <div className="flex flex-col gap-2">
-                    {singleRestTools.map(t => (
+                    {shownRestTools.map(t => (
                         <div key={t.id} className="ui-group-card !flex-row !items-center">
                             <button onClick={() => setEditRestId(t.id)}
                                 className="flex-1 min-w-0 bg-none border-none cursor-pointer py-2 px-0 text-left flex items-center gap-2 overflow-hidden">
@@ -872,7 +892,7 @@ export function ToolboxSettings() {
                         </div>
                     ))}
 
-                    {restPackages.map(pkg => {
+                    {shownRestPackages.map(pkg => {
                         const children = restTools.filter(t => t.packageId === pkg.id);
                         return (
                             <div key={pkg.id} className="flex flex-col gap-1.5">
@@ -962,7 +982,7 @@ export function ToolboxSettings() {
                 <div className="ui-empty-compact mt-2"><span className="menu-desc">暂无 Workflows</span></div>
             ) : (
                 <div className="flex flex-col gap-2">
-                    {singleCompositeTools.map(t => (
+                    {shownCompositeTools.map(t => (
                         <div key={t.id} className="ui-group-card !flex-row !items-center">
                             <button onClick={() => setEditCompositeId(t.id)}
                                 className="flex-1 min-w-0 bg-none border-none cursor-pointer py-2 px-0 text-left flex items-center gap-2 overflow-hidden">
@@ -985,7 +1005,7 @@ export function ToolboxSettings() {
                         </div>
                     ))}
 
-                    {compositePackages.map(pkg => {
+                    {shownCompositePackages.map(pkg => {
                         const children = compositeTools.filter(t => t.packageId === pkg.id);
                         const isExpanded = expandedCompositePackageIds.has(pkg.id);
                         return (
