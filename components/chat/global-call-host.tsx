@@ -5,7 +5,7 @@ import { VoiceCallScreen } from "./voice-call-screen";
 import { VideoCallScreen } from "./video-call-screen";
 import { GLOBAL_CALL_START_EVENT, GLOBAL_CALL_END_EVENT, type GlobalCallStartDetail } from "@/lib/global-call-events";
 import { CHAT_OPEN_SESSION_EVENT } from "@/lib/chat-notification-events";
-import { pushChatMessage, triggerChatReply, loadChatMessages } from "@/lib/chat-storage";
+import { CHAT_REQUEST_REPLY_EVENT, pushChatMessage } from "@/lib/chat-storage";
 import { loadChatOfflineTurns } from "@/lib/chat-offline-storage";
 
 type ActiveCallState = GlobalCallStartDetail & {
@@ -62,10 +62,14 @@ export function GlobalCallHost() {
         setCall(null);
         setMinimizedDuration(0);
 
-        // 通知聊天室同步历史
-        if (currentCall.session) {
-            window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: currentCall.session.id } }));
-        }
+        if (!currentCall.session) return;
+        window.dispatchEvent(new CustomEvent("chat-messages-updated", { detail: { sessionId: currentCall.session.id } }));
+        if (currentCall.offlineMode) return;
+        window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(CHAT_REQUEST_REPLY_EVENT, {
+                detail: { sessionId: currentCall.session.id, characterId: currentCall.character.id },
+            }));
+        }, 400);
     };
 
     const handleExpandCall = () => {
