@@ -1826,7 +1826,7 @@ export async function buildChatPromptMessages(
                 createdAt: new Date().toISOString(),
                 mediaType: "image",
                 mediaUrl: imageUrl,
-                mediaData: { label: "视频通话当前画面" },
+             mediaData: { label: options?.appTags?.includes("offline") ? "你眼前真实看见的景象" : "视频通话当前画面" },
             })),
         ]
         : history;
@@ -1946,6 +1946,12 @@ export async function buildChatPromptMessages(
         llmMessages.push({
             role: "system",
             content: "本次自定义 APP AI 任务只输出严格 JSON。不要输出 Markdown 代码块、解释文字或聊天富媒体指令。",
+        });
+    }
+        if (isOfflineMode) {
+        llmMessages.push({
+            role: "system",
+            content: "当前是同处一室的面对面相处，不是通讯。写动作、表情、距离和口语。禁止出现：打电话、挂断、信号、屏幕、镜头、视频通话、语音通话、玉简、传音符、隔空传音、那头、听筒。",
         });
     }
     appendEmptyGenerateGuardMessage(llmMessages, config, historyForPrompt);
