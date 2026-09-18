@@ -211,19 +211,21 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
         // Insert system message
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
         const initRole = initiator === "character" ? "assistant" : "user";
-        if (!lastMsg || !(lastMsg.content.includes("发起了语音通话"))) {
-            const callMsg = initiator === "character"
-                ? `[我向${userNameRef.current}发起了语音通话]`
-                : `[我向${character.name}发起了语音通话]`;
+                if (!lastMsg || !(lastMsg.content.includes("发起了语音通话") || lastMsg.content.includes("面对面相处"))) {
+            const callMsg = offlineMode
+                ? "你们此刻面对面站在同一空间，能看见对方的表情和动作，能直接说话、伸手碰到对方。这不是打电话，不是屏幕，不是玉简或任何隔空传讯。"
+                : initiator === "character"
+                    ? `[我向${userNameRef.current}发起了语音通话]`
+                    : `[我向${character.name}发起了语音通话]`;
             
             if (offlineMode) {
                 // 线下模式：增加记录到线下历史中，绝不上报到线上聊天记录库
                 appendChatOfflineTurn({
                     sessionId: session.id,
                     userContent: callMsg,
-                    assistantContent: "（语音通话已发起）",
-                    summary: callMsg,
-                    summaryTag: "语音通话",
+                    assistantContent: "（开始面对面相处）",
+                    summary: "两人开始面对面相处，同处一室。",
+                    summaryTag: "面对面",
                 });
                 messagesRef.current = [...messagesRef.current, { id: `sys-${Date.now()}`, role: initRole, content: callMsg, createdAt: new Date().toISOString() } as ChatMessage];
             } else {
@@ -406,7 +408,7 @@ const endCall = useCallback((by: "user" | "assistant") => {
         try {
             // 2. Generate AI response
             const aiResponseText = flattenCompletionResult(await generateChatCompletion(session, messagesRef.current, {
-                appTags: ["chat", "voice"],
+                                appTags: offlineMode ? ["chat", "offline"] : ["chat", "voice"],
             }));
 
             if (stateRef.current === "ENDED") return;
