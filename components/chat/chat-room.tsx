@@ -5051,9 +5051,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             if (!cancelled) showChatToast(err instanceof Error ? err.message : "朗读失败");
         }
     };
-	    useEffect(() => {
+	       useEffect(() => {
         return () => {
-                       offlineTtsAbortRef.current?.();
+            offlineTtsAbortRef.current?.();
             try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
         };
     }, []);
