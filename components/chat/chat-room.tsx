@@ -5051,7 +5051,12 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             if (!cancelled) showChatToast(err instanceof Error ? err.message : "朗读失败");
         }
     };
-	
+	    useEffect(() => {
+        return () => {
+            offlineTtsAbortRef.current?.();
+            stopAllTtsPlayback();
+        };
+    }, []);
     const renderOfflineContextMenu = (turn: ChatOfflineTurn, role: OfflineActionTarget["role"]) => {
         const menu = (
             <div
