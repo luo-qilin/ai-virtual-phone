@@ -120,6 +120,30 @@ function isChatRoomElementVisible(element: HTMLElement | null): boolean {
     return style.display !== "none" && style.visibility !== "hidden";
 }
 
+function splitOfflineSpeechAndAction(text: string): { kind: "speech" | "action"; text: string }[] {
+    const src = text.replace(/<\/?content>/gi, "").replace(/<summary>[\s\S]*?<\/summary>/gi, "").trim();
+    if (!src) return [];
+    const re = new RegExp("\"([^\"]{2,})\"|\u201C([^\u201D]{2,})\u201D|\u300C([^\u300D]{2,})\u300D", "g");
+    const parts: { kind: "speech" | "action"; text: string }[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) {
+        const before = src.slice(last, m.index).trim();
+        if (before) parts.push({ kind: "action", text: before.replace(/^[（(]/, "").replace(/[）)]$/, "") });
+        const spoken = (m[1] || m[2] || m[3] || "").trim();
+        if (spoken) parts.push({ kind: "speech", text: spoken });
+        last = m.index + m[0].length;
+    }
+    const tail = src.slice(last).trim();
+    if (tail) parts.push({ kind: "action", text: tail.replace(/^[（(]/, "").replace(/[）)]$/, "") });
+    if (!parts.some(p => p.kind === "speech")) return [{ kind: "action", text: src }];
+    return parts;
+}
+
+export function getOfflineSpeechOnly(text: string): string {
+    return splitOfflineSpeechAndAction(text).filter(p => p.kind === "speech").map(p => p.text).join("\n");
+}
+
 function splitOfflineParagraphs(text: string): string[] {
     const normalized = text.replace(/\r\n?/g, "\n").trim();
     if (!normalized) return [];
@@ -158,21 +182,24 @@ const OfflineAssistantTextBlock = memo(function OfflineAssistantTextBlock({
     text: string;
     defaultExpanded: boolean;
 }) {
-    const paragraphs = useMemo(() => splitOfflineParagraphs(text), [text]);
-    if (paragraphs.length <= 1) {
-        return <BilingualTextBlock text={text} mode="markdown" defaultExpanded={defaultExpanded} htmlFrameVariant="offline" />;
-    }
+    const segments = useMemo(() => splitOfflineSpeechAndAction(text), [text]);
+    if (segments.length === 0) return null;
     return (
         <div className="chat-offline-paragraph-stack">
-            {paragraphs.map((paragraph, index) => (
-                <div className="chat-offline-paragraph" key={`${index}-${paragraph.slice(0, 16)}`}>
-                    <BilingualTextBlock text={paragraph} mode="markdown" defaultExpanded={defaultExpanded} htmlFrameVariant="offline" />
-                </div>
+            {segments.map((seg, index) => (
+                seg.kind === "speech" ? (
+                    <div className="chat-offline-paragraph chat-offline-speech" key={`s-${index}`}>
+                        <BilingualTextBlock text={seg.text} mode="markdown" defaultExpanded={defaultExpanded} htmlFrameVariant="offline" />
+                    </div>
+                ) : (
+                    <div className="chat-offline-paragraph chat-offline-action" key={`a-${index}`}>
+                        <BilingualTextBlock text={`（${seg.text}）`} mode="markdown" defaultExpanded={defaultExpanded} htmlFrameVariant="offline" />
+                    </div>
+                )
             ))}
         </div>
     );
 });
-
 const CHAT_VISUAL_MEDIA_TYPES = new Set([
     "sticker",
     "dice",
