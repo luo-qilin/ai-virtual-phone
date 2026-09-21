@@ -5042,8 +5042,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     promise.then(() => resolve()).catch(() => resolve());
                 });
                 if (cancelled) return;
+                                const pauseMs = Math.max(0, voiceConfig.sentencePauseMs ?? 2000);
                 if (i < lines.length - 1) {
-                    await new Promise(r => setTimeout(r, 1500));
+                    await new Promise(r => setTimeout(r, pauseMs));
                 }
             }
         } catch (err) {
