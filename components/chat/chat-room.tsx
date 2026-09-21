@@ -5885,6 +5885,14 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                                             text={offlineDisplay.assistantContent}
                                             defaultExpanded={session.collapseBilingualTranslation !== false ? false : true}
                                         />
+										                                        <button
+                                            type="button"
+                                            className="chat-offline-speak-btn"
+                                            onClick={(e) => { e.stopPropagation(); void speakOfflineTurn(turn); }}
+                                            aria-label="朗读对白"
+                                        >
+                                            <Volume2 size={16} />
+                                        </button>
                                     </div>
                                     {turn.summary.trim() && (
                                         <details className="chat-offline-summary-fold">
