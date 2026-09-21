@@ -16,6 +16,7 @@ import { EmojiPanel, StickerPanel } from "./emoji-panel";
 import { StickerSearchSuggest } from "./sticker-search-suggest";
 import { StateValuesPanel } from "./state-values-panel";
 import { generateChatCompletion, generateOfflineChatCompletion, flattenCompletionResult, ChatEngineError } from "@/lib/chat-engine";
+import { resolveVoiceConfig, synthesizeSpeech, playAudioBlob } from "@/lib/tts-service";
 import { formatOfflineTurnXml as formatOfflineTurnXmlShared, buildOfflinePromptHistory as buildOfflinePromptHistoryShared } from "@/lib/offline-prompt-builder";
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
@@ -54,7 +55,7 @@ import { useKeyboardDismissAutoSend } from "@/components/chat/use-keyboard-dismi
 import { cancelBailoutKey } from "@/lib/push-bailout-client";
 import { PENDING_REPLY_PREFIX } from "@/lib/friend-request-engine";
 import type { UserIdentity } from "@/components/settings/user-identity";
-import { AlertCircle, Blocks, Check, Trash2, User, ChevronLeft, ChevronRight, Clapperboard, Clock, Gift, Languages, Loader2, MoreHorizontal, X } from "lucide-react";
+import { AlertCircle, Blocks, Check, Trash2, User, ChevronLeft, ChevronRight, Clapperboard, Clock, Gift, Languages, Loader2, MoreHorizontal, Volume2, X } from "lucide-react";
 import { setDebugChatState } from "@/lib/debug-store";
 import { SessionCustomCSS } from "@/components/ui/session-custom-css";
 import { setChatActive } from "@/lib/music-action-queue";
@@ -5005,6 +5006,33 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         });
     };
 
+    const offlineTtsAbortRef = useRef<(() => void) | null>(null);
+    const speakOfflineTurn = async (turn: ChatOfflineTurn) => {
+        const display = getOfflineDisplayText(turn);
+        const speech = getOfflineSpeechOnly(display.assistantContent);
+        if (!speech.trim()) {
+            showChatToast("这段没有对白");
+            return;
+        }
+        const voiceConfig = resolveVoiceConfig(session.contactId);
+        if (!voiceConfig) {
+            showChatToast("先给角色配音色");
+            return;
+        }
+        try {
+            offlineTtsAbortRef.current?.();
+            const blob = await synthesizeSpeech(speech, voiceConfig);
+            if (!blob) {
+                showChatToast("合成失败");
+                return;
+            }
+            const { abort } = playAudioBlob(blob);
+            offlineTtsAbortRef.current = abort;
+        } catch (err) {
+            showChatToast(err instanceof Error ? err.message : "朗读失败");
+        }
+    };
+	
     const renderOfflineContextMenu = (turn: ChatOfflineTurn, role: OfflineActionTarget["role"]) => {
         const menu = (
             <div
@@ -5016,6 +5044,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             >
                 <div className="flex">
                     <button onClick={() => { copyTextToClipboard(getOfflineCopyText(turn, role)); setActiveOfflineTarget(null); }} className="ctx-menu-btn">复制</button>
+					                    {role === "assistant" && (
+                        <button onClick={() => { void speakOfflineTurn(turn); setActiveOfflineTarget(null); }} className="ctx-menu-btn">朗读</button>
+                    )}
                     <button onClick={() => handleOfflineEditStart(turn, role)} className="ctx-menu-btn">编辑</button>
                     <button onClick={() => void handleOfflineRetryFrom(turn.id)} className="ctx-menu-btn ctx-menu-btn-danger">重试以下</button>
                 </div>
