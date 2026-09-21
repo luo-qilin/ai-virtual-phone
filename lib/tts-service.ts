@@ -204,6 +204,18 @@ let _ttsVolume = ((): number => {
 // adjust volume mid-sentence.
 let _activeGain: GainNode | null = null;
 
+export function stopAllTtsPlayback(): void {
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    try {
+        const audio = document.querySelector("audio");
+        if (audio) {
+            audio.pause();
+            audio.removeAttribute("src");
+            audio.load();
+        }
+    } catch { /* ignore */ }
+}
+
 export function getTtsVolume(): number {
     return _ttsVolume;
 }
@@ -242,9 +254,10 @@ function getAudioContext(): AudioContext | null {
 }
 
 function getSharedAudio(): HTMLAudioElement {
-    if (!_sharedAudio) {
-        _sharedAudio = new Audio();
-        _sharedAudio.setAttribute("playsinline", "");
+        if (_sharedAudio) {
+        _sharedAudio.pause();
+        _sharedAudio.removeAttribute("src");
+        _sharedAudio.load();
     }
     return _sharedAudio;
 }
