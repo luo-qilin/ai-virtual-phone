@@ -52,7 +52,13 @@ type VoiceCallScreenProps = {
 };
 
 function extractSpokenDialogue(text: string): string {
-    const quoted = [...text.matchAll(/[“「]([^”」]+)[”」]/g)].map(m => m[1].trim()).filter(Boolean);
+    const quoted: string[] = [];
+    const re = new RegExp("\"([^\"]{2,})\"|\u201C([^\u201D]{2,})\u201D|\u300C([^\u300D]{2,})\u300D", "g");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+        const s = (m[1] || m[2] || m[3] || "").trim();
+        if (s) quoted.push(s);
+    }
     if (quoted.length) return quoted.join("\n");
     return text
         .replace(/<\/?content>/gi, "")
