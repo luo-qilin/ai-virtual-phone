@@ -5686,7 +5686,9 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             <header className="page-header chat-room-main-pane" data-ui="header">
                 <div className="page-header-safe-area" />
                 <div className="page-header-content">
-                    <button className="page-back-btn" type="button" onClick={() => {
+                      <button className="page-back-btn" type="button" onClick={() => {
+                        offlineTtsAbortRef.current?.();
+                        stopAllTtsPlayback();
                         if (showVoiceCall || showVideoCall) {
                             setCallMinimized(true);
                         }
