@@ -5006,11 +5006,14 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
         });
     };
 
-    const offlineTtsAbortRef = useRef<(() => void) | null>(null);
+        const offlineTtsAbortRef = useRef<(() => void) | null>(null);
     const speakOfflineTurn = async (turn: ChatOfflineTurn) => {
         const display = getOfflineDisplayText(turn);
-        const speech = getOfflineSpeechOnly(display.assistantContent);
-        if (!speech.trim()) {
+        const lines = getOfflineSpeechOnly(display.assistantContent)
+            .split(/\n+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+        if (!lines.length) {
             showChatToast("这段没有对白");
             return;
         }
@@ -5019,17 +5022,32 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             showChatToast("先给角色配音色");
             return;
         }
+        let cancelled = false;
+        offlineTtsAbortRef.current?.();
+        offlineTtsAbortRef.current = () => { cancelled = true; };
         try {
-            offlineTtsAbortRef.current?.();
-            const blob = await synthesizeSpeech(speech, voiceConfig);
-            if (!blob) {
-                showChatToast("合成失败");
-                return;
+            for (let i = 0; i < lines.length; i++) {
+                if (cancelled) return;
+                const blob = await synthesizeSpeech(lines[i], voiceConfig);
+                if (cancelled) return;
+                if (!blob) continue;
+                await new Promise<void>((resolve) => {
+                    const { promise, abort } = playAudioBlob(blob);
+                    const prev = offlineTtsAbortRef.current;
+                    offlineTtsAbortRef.current = () => {
+                        cancelled = true;
+                        abort();
+                        prev?.();
+                    };
+                    promise.then(() => resolve()).catch(() => resolve());
+                });
+                if (cancelled) return;
+                if (i < lines.length - 1) {
+                    await new Promise(r => setTimeout(r, 3000));
+                }
             }
-            const { abort } = playAudioBlob(blob);
-            offlineTtsAbortRef.current = abort;
         } catch (err) {
-            showChatToast(err instanceof Error ? err.message : "朗读失败");
+            if (!cancelled) showChatToast(err instanceof Error ? err.message : "朗读失败");
         }
     };
 	
