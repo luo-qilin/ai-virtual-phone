@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatSession, ChatMessage, loadChatMessages, pushChatMessage, getLatestCharacterStateValues } from "@/lib/chat-storage";
-import { loadChatOfflineTurns, appendChatOfflineTurn } from "@/lib/chat-offline-storage";
+import { loadChatOfflineTurns, appendChatOfflineTurn, parseOfflineResponse } from "@/lib/chat-offline-storage";
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
 import type { StateValue } from "@/lib/chat-storage";
 import { parseStateValues, mergeStateValues } from "@/lib/state-value-parser";
@@ -347,7 +347,7 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
             .map(p => p.content);
 
                return { cleanParts, stateValues, shouldHangup };
-    }, [session.id, session.contactId]);
+     }, [session.id, session.contactId, offlineMode]);
 const endCall = useCallback((by: "user" | "assistant") => {
         if (stateRef.current === "ENDED") return;
         setCallState("ENDED");
