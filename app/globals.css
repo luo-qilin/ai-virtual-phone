@@ -53,3 +53,12 @@
 .chat-offline-speech {
     font-weight: 500;
 }
+.chat-offline-speak-btn {
+    margin-top: 6px;
+    opacity: 0.55;
+    background: none;
+    border: 0;
+    padding: 4px;
+    color: inherit;
+}
+.chat-offline-speak-btn:active { opacity: 1; }
