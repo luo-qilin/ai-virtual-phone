@@ -185,16 +185,9 @@ export function loadPresets(): PresetConfig[] {
 
         // Ensure built-in preset exists and is up-to-date
         const existingBuiltin = presets.find(p => p.builtIn);
-        if (!existingBuiltin) {
+               if (!existingBuiltin) {
             const builtin = createBuiltinPreset();
             presets.unshift(builtin);
-            savePresets(presets);
-            shouldPersistCleanup = false;
-        } else if ((existingBuiltin.builtInVersion ?? 0) < BUILTIN_PRESET_VERSION) {
-            const fresh = preserveCustomAppPresetPrompts(createBuiltinPreset(), existingBuiltin);
-            fresh.id = existingBuiltin.id;
-            const idx = presets.indexOf(existingBuiltin);
-            presets[idx] = fresh;
             savePresets(presets);
             shouldPersistCleanup = false;
         } else if (shouldPersistCleanup) {
