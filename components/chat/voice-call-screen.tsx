@@ -51,6 +51,15 @@ type VoiceCallScreenProps = {
     offlineMode?: boolean;
 };
 
+function extractSpokenDialogue(text: string): string {
+    const quoted = [...text.matchAll(/[“「]([^”」]+)[”」]/g)].map(m => m[1].trim()).filter(Boolean);
+    if (quoted.length) return quoted.join("\n");
+    return text
+        .replace(/<\/?content>/gi, "")
+        .replace(/<summary>[\s\S]*?<\/summary>/gi, "")
+        .trim();
+}
+
 function stripBilingualForSpeech(text: string): string {
     return text
         .split("\n")
@@ -291,9 +300,11 @@ export function VoiceCallScreen({ session, character, onEnd, onConnect, onMinimi
 
        const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[]; shouldHangup: boolean } => {
         // Use shared parseAIResponse for full rich media support (stickers, quotes, etc.)
-        const previousState = getLatestCharacterStateValues(session.contactId);
-
-              const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+              const previousState = getLatestCharacterStateValues(session.contactId);
+        const stripped = offlineMode
+            ? extractSpokenDialogue(parseOfflineResponse(aiResponseText, "summary").content || aiResponseText)
+            : aiResponseText;
+        const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(stripped, previousState);
         const shouldHangup = parts.some(p => p.mediaData?.label === "hangup");
 
         // 自定义状态栏渲染戳
