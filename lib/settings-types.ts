@@ -173,6 +173,8 @@ export type VoiceApiConfig = {
     speechPitch?: number;
     customVoices?: { id: string; name: string; createdAt?: number }[];
     enableSTT: boolean;
+     /** 两句对白之间的停顿，毫秒。缺省 2000。 */
+    sentencePauseMs?: number;
     enableTTS: boolean;
 };
 
