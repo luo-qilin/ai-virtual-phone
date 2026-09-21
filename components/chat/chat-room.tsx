@@ -5043,7 +5043,7 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                 });
                 if (cancelled) return;
                 if (i < lines.length - 1) {
-                    await new Promise(r => setTimeout(r, 2000));
+                    await new Promise(r => setTimeout(r, 1500));
                 }
             }
         } catch (err) {
