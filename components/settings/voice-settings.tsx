@@ -930,6 +930,27 @@ export function VoiceSettings() {
                                             <span className="menu-label font-medium">启用语音合成 (TTS)</span>
                                             <Toggle checked={config.enableTTS} onChange={(v) => updateConfig(config.id, { enableTTS: v })} />
                                         </div>
+                                                                                        <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <label className="menu-desc">话与话间隔</label>
+                                                        <span className="menu-label font-medium">{((config.sentencePauseMs ?? 2000) / 1000).toFixed(1)} 秒</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min={0}
+                                                        max={5000}
+                                                        step={100}
+                                                        value={config.sentencePauseMs ?? 2000}
+                                                        onChange={(e) => updateConfig(config.id, { sentencePauseMs: Number(e.target.value) })}
+                                                        className="w-full accent-black"
+                                                        aria-label="话与话间隔"
+                                                    />
+                                                    <div className="relative h-4 px-1 text-xs text-gray-500" aria-hidden="true">
+                                                        <span className="absolute left-1">0 秒</span>
+                                                        <span className="absolute whitespace-nowrap" style={{ left: "40%", transform: "translateX(-50%)" }}>2 秒</span>
+                                                        <span className="absolute right-1">5 秒</span>
+                                                    </div>
+                                                </div>
                                     </div>
                                 )
                             })()}
