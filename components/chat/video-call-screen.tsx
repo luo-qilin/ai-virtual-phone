@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatSession, ChatMessage, loadChatMessages, pushChatMessage, getLatestCharacterStateValues } from "@/lib/chat-storage";
-import { loadChatOfflineTurns, appendChatOfflineTurn } from "@/lib/chat-offline-storage";
+import { loadChatOfflineTurns, appendChatOfflineTurn, parseOfflineResponse } from "@/lib/chat-offline-storage";
 import { getStatusRegionConfig, isCustomStatusRegionActive } from "@/lib/chat-status-region";
 import type { StateValue } from "@/lib/chat-storage";
 import { parseStateValues, mergeStateValues } from "@/lib/state-value-parser";
@@ -376,9 +376,11 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
     // ── AI response processing ──
 
        const processAIResponse = useCallback((aiResponseText: string): { cleanParts: string[]; stateValues: StateValue[]; shouldHangup: boolean } => {
-        const previousState = getLatestCharacterStateValues(session.contactId);
-
-                       const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(aiResponseText, previousState);
+               const previousState = getLatestCharacterStateValues(session.contactId);
+        const sourceText = offlineMode
+            ? (parseOfflineResponse(aiResponseText, "summary").content || aiResponseText)
+            : aiResponseText;
+        const { parts, stateValues, freshStateValues, statusPanel, innerMonologue } = parseAIResponse(sourceText, previousState);
                    const shouldHangup = parts.some(p => p.mediaData?.label === "hangup");
 
         // 自定义状态栏渲染戳：不盖的话 custom 模式下 [状态栏] 原文按 markdown 渲染，看着像掉格式
@@ -423,7 +425,7 @@ export function VideoCallScreen({ session, character, onEnd, onConnect, onMinimi
             .map(p => p.content);
 
                return { cleanParts, stateValues, shouldHangup };
-    }, [session.id, session.contactId]);
+      }, [session.id, session.contactId, offlineMode]);
 
     const endCall = useCallback((by: "user" | "assistant") => {
         if (stateRef.current === "ENDED") return;
