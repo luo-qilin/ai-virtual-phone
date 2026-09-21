@@ -5047,13 +5047,15 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
                     await new Promise(r => setTimeout(r, pauseMs));
                 }
             }
-        } catch (err) {
+               } catch (err) {
             if (!cancelled) showChatToast(err instanceof Error ? err.message : "朗读失败");
         }
+        offlineTtsAbortRef.current = null;
     };
-	       useEffect(() => {
+	         useEffect(() => {
         return () => {
-            offlineTtsAbortRef.current?.();
+            try { offlineTtsAbortRef.current?.(); } catch { /* ignore */ }
+            offlineTtsAbortRef.current = null;
             try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
         };
     }, []);
@@ -5686,9 +5688,10 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
             <header className="page-header chat-room-main-pane" data-ui="header">
                 <div className="page-header-safe-area" />
                 <div className="page-header-content">
-                      <button className="page-back-btn" type="button" onClick={() => {
-                        offlineTtsAbortRef.current?.();
-                        stopAllTtsPlayback();
+                                         <button className="page-back-btn" type="button" onClick={() => {
+                        try { offlineTtsAbortRef.current?.(); } catch { /* ignore */ }
+                        offlineTtsAbortRef.current = null;
+                        try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
                         if (showVoiceCall || showVideoCall) {
                             setCallMinimized(true);
                         }
