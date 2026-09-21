@@ -5053,8 +5053,8 @@ export function ChatRoom({ session, onBack, onDeleted }: ChatRoomProps) {
     };
 	    useEffect(() => {
         return () => {
-            offlineTtsAbortRef.current?.();
-            stopAllTtsPlayback();
+                       offlineTtsAbortRef.current?.();
+            try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
         };
     }, []);
     const renderOfflineContextMenu = (turn: ChatOfflineTurn, role: OfflineActionTarget["role"]) => {
