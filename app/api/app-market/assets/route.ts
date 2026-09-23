@@ -6,7 +6,7 @@ import { formatSupabaseRestError, getSupabaseServerConfig } from "@/lib/server/s
 import type { CustomAppPackageKind } from "@/lib/custom-app-market-types";
 
 const CUSTOM_APP_PACKAGE_BUCKET = "custom-app-market-packages";
-const MAX_PACKAGE_BYTES = 20 * 1024 * 1024;
+const MAX_PACKAGE_BYTES = 50 * 1024 * 1024;
 
 function cleanText(value: unknown, maxLength: number): string {
   return String(value ?? "").replace(/\u0000/g, "").trim().slice(0, maxLength);
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "只支持 .zip、.html 应用包；旧 .floatapp 包仍可兼容导入。" }, { status: 400 });
     }
     if (file.size > MAX_PACKAGE_BYTES) {
-      return NextResponse.json({ ok: false, error: "应用包过大，请控制在 20MB 以内。" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "应用包过大，请控制在 50MB 以内。" }, { status: 400 });
     }
 
     const ownerPath = safeFilename(account.id);
