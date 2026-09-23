@@ -3,7 +3,7 @@ import { getCurrentAccount } from "@/lib/server/account-auth";
 import { getSupabaseServerConfig } from "@/lib/server/supabase-rest";
 
 const BUCKET = "custom-app-market-packages";
-const MAX_PACKAGE_BYTES = 5 * 1024 * 1024;
+const MAX_PACKAGE_BYTES = 20 * 1024 * 1024;
 
 function safeFilename(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "app.zip";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const filename = safeFilename(String(body.filename || "app.zip").slice(0, 120));
   const size = Number(body.size || 0);
   if (size > MAX_PACKAGE_BYTES) {
-    return NextResponse.json({ ok: false, error: "应用包过大，请控制在 5MB 以内。" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "应用包过大，请控制在 20MB 以内。" }, { status: 400 });
   }
 
   const path = `${safeFilename(account.id)}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${filename}`;
