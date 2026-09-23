@@ -25,8 +25,26 @@ export async function fetchCustomAppMarketItems(): Promise<CustomAppMarketItem[]
 export async function fetchCustomAppMarketItemByAppId(appId: string): Promise<CustomAppMarketItem | null> { const data = await fetchJson<MarketListResponse>(`/api/app-market/apps?appId=${encodeURIComponent(appId)}`, { cache: "no-store" }); return data.app ?? null; }
 export async function fetchMyCustomAppMarketItems(): Promise<CustomAppMarketItem[]> { const data = await fetchJson<MarketListResponse>("/api/app-market/apps-lite?mine=1", { cache: "no-store" }); return data.apps ?? []; }
 export async function fetchCustomAppMarketAdminItems(input: { adminKey: string; view: CustomAppMarketAdminView }): Promise<CustomAppMarketItem[]> { const view = encodeURIComponent(input.view); const data = await fetchJson<MarketListResponse>(`/api/app-market/apps?admin=1&view=${view}`, { cache: "no-store", headers: { "x-app-market-admin-key": input.adminKey } }); return data.apps ?? []; }
-export async function uploadCustomAppPackageAsset(input: { file: File; filename: string }): Promise<{ url: string; path: string; kind: CustomAppPackageKind; size: number }> { const formData = new FormData(); formData.append("file", input.file, input.filename); const data = await fetchJson<MarketAssetResponse>("/api/app-market/assets", { method: "POST", body: formData }, 60000); if (!data.url || !data.path || !data.kind) throw new Error(data.error || "应用包上传失败"); return { url: data.url, path: data.path, kind: data.kind, size: Number(data.size ?? input.file.size) }; }
-const ICON_SAFE_LENGTH = 160_000; const ICON_HARD_LIMIT = 280_000;
+export async function uploadCustomAppPackageAsset(input: { file: File; filename: string }): Promise<{ url: string; path: string; kind: CustomAppPackageKind; size: number }> {
+  const name = input.filename.toLowerCase();
+  const kind: CustomAppPackageKind = name.endsWith(".html") ? "html" : name.endsWith(".floatapp") ? "floatapp" : "zip";
+  const signed = await fetchJson<{ ok: boolean; uploadUrl?: string; publicUrl?: string; path?: string; error?: string }>(
+    "/api/app-market/assets/sign",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: input.filename, size: input.file.size }) },
+    20000,
+  );
+  if (!signed.uploadUrl || !signed.path || !signed.publicUrl) throw new Error(signed.error || "无法创建上传凭证");
+  const put = await fetch(signed.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": kind === "html" ? "text/html;charset=utf-8" : "application/zip", "x-upsert": "true" },
+    body: input.file,
+  });
+  if (!put.ok) {
+    const text = await put.text().catch(() => "");
+    throw new Error(text || `直传失败 HTTP ${put.status}`);
+  }
+  return { url: signed.publicUrl, path: signed.path, kind, size: input.file.size };
+}
 async function compressIconForMarket(dataUrl?: string): Promise<string> { const icon = (dataUrl || "").trim(); if (!icon.startsWith("data:image/")) return ""; if (icon.length <= ICON_SAFE_LENGTH) return icon; if (typeof document === "undefined") return ""; try { const image = await new Promise<HTMLImageElement>((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error("图标解码失败")); img.src = icon; }); for (const size of [256, 128]) { const scale = Math.min(1, size / Math.max(image.naturalWidth || size, image.naturalHeight || size, 1)); const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round((image.naturalWidth || size) * scale)); canvas.height = Math.max(1, Math.round((image.naturalHeight || size) * scale)); const ctx = canvas.getContext("2d"); if (!ctx) return ""; ctx.drawImage(image, 0, 0, canvas.width, canvas.height); const webp = canvas.toDataURL("image/webp", 0.85); if (webp.startsWith("data:image/webp") && webp.length <= ICON_HARD_LIMIT) return webp; const png = canvas.toDataURL("image/png"); if (png.length <= ICON_HARD_LIMIT) return png; } return ""; } catch { return ""; } }
 export async function publishCustomAppMarketItem(input: { app: InstalledCustomApp; packageUrl: string; packagePath: string; packageKind: CustomAppPackageKind; packageSize: number; version?: string; changelog?: string }): Promise<CustomAppMarketItem> { const version = input.version?.trim() || input.app.version; const data = await fetchJson<MarketListResponse>("/api/app-market/apps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: input.app.name, version, changelog: input.changelog, description: input.app.description, iconDataUrl: await compressIconForMarket(input.app.iconDataUrl), permissions: input.app.permissions, manifest: { ...input.app.manifest, version, primaryTags: getCustomAppPrimaryTags(input.app) }, packageUrl: input.packageUrl, packagePath: input.packagePath, packageKind: input.packageKind, packageSize: input.packageSize }) }, 60000); if (!data.app) throw new Error(data.error || "提交应用失败"); return data.app; }
 export async function validateCustomAppMarketItem(input: { id?: string; app: InstalledCustomApp; version?: string }): Promise<void> { const version = input.version?.trim() || input.app.version; await fetchJson<MarketListResponse>("/api/app-market/apps", { method: input.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ validateOnly: true, id: input.id, name: input.app.name, version, description: input.app.description, iconDataUrl: input.app.iconDataUrl, permissions: input.app.permissions, manifest: { ...input.app.manifest, version, primaryTags: getCustomAppPrimaryTags(input.app) } }) }); }
