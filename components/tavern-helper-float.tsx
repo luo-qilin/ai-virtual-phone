@@ -94,17 +94,14 @@ const MODE: HelperBtn[] = [
 export function isTgbreakPreset(preset: PresetConfig | null | undefined): boolean {
   if (!preset) return false;
   const name = `${preset.name || ""} ${preset.description || ""}`.toLowerCase();
-  if (name.includes("tgbreak") || name.includes("tgd") || name.includes("日月西破限")) return true;
-  const names = (preset.prompts || []).map(p => p.name || "");
-  return names.some(n => n.includes("😾😾别关")) && names.some(n => n.includes("瑟瑟"));
+  return name.includes("tgbreak");
 }
 
 function boundPreset(): PresetConfig | null {
   const presets = loadPresets();
   if (!presets.length) return null;
-  const sessions = loadChatSessions();
-  const latest = [...sessions].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))[0];
-  const slot = resolveBinding(loadBindingConfig(), latest?.contactId, "chat");
+  const slot = resolveBinding(loadBindingConfig(), undefined, "chat");
+  if (!slot.presetId) return null;
   return presets.find(p => p.id === slot.presetId) ?? null;
 }
 
@@ -140,7 +137,7 @@ export function TavernHelperFloat() {
 
   const refresh = useCallback(() => setPreset(boundPreset()), []);
   useEffect(() => {
-    refresh();
+       refresh();
     window.addEventListener("settings-presets-updated", refresh);
     window.addEventListener("settings-bindings-updated", refresh);
     return () => {

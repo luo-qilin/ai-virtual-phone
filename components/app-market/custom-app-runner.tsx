@@ -117,13 +117,29 @@ function normalizeAssetRef(value: string): string {
   return value.replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^\/+/, "");
 }
 
+function playableAssetUrl(asset: InstalledCustomApp["assets"][string]): string {
+  const dataUrl = asset.dataUrl || "";
+  if (!dataUrl.startsWith("data:")) return dataUrl;
+  try {
+    const comma = dataUrl.indexOf(",");
+    const payload = dataUrl.slice(comma + 1);
+    const mime = asset.mime || "application/octet-stream";
+    const binary = atob(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  } catch {
+    return dataUrl;
+  }
+}
+
 function rewriteAssetRefs(html: string, app: InstalledCustomApp): string {
   let next = html;
   for (const asset of Object.values(app.assets)) {
     const escapedPath = asset.path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const dataUrl = asset.dataUrl.replace(/"/g, "&quot;");
-    next = next.replace(new RegExp(`(src|href)=["'](?:\\./|/)?${escapedPath}["']`, "g"), `$1="${dataUrl}"`);
-    next = next.replace(new RegExp(`url\\((["']?)(?:\\./|/)?${escapedPath}\\1\\)`, "g"), `url("${dataUrl}")`);
+    const playable = playableAssetUrl(asset).replace(/"/g, "&quot;");
+    next = next.replace(new RegExp(`(src|href|poster)=["'](?:\\./|/)?${escapedPath}["']`, "g"), `$1="${playable}"`);
+    next = next.replace(new RegExp(`url\\((["']?)(?:\\./|/)?${escapedPath}\\1\\)`, "g"), `url("${playable}")`);
   }
   return next;
 }

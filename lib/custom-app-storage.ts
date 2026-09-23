@@ -37,7 +37,7 @@ registerDynamicPrefix(CUSTOM_APP_DATA_PREFIX);
 registerDynamicPrefix(CUSTOM_APP_TIMELINE_PREFIX);
 
 const MAX_TEXT_LENGTH = 1800000;
-const MAX_ASSET_BYTES = 2 * 1024 * 1024;
+const MAX_ASSET_BYTES = 32 * 1024 * 1024;
 
 export type CustomAppTimelineEntry = {
   id: string;
@@ -689,6 +689,10 @@ function guessMime(path: string): string {
   if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html;charset=utf-8";
   if (lower.endsWith(".woff2")) return "font/woff2";
   if (lower.endsWith(".woff")) return "font/woff";
+  if (lower.endsWith(".ttf")) return "font/ttf";
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".webm")) return "video/webm";
+  if (lower.endsWith(".mov")) return "video/quicktime";
   return "application/octet-stream";
 }
 
