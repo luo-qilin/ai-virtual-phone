@@ -31,7 +31,6 @@ export async function uploadCustomAppPackageAsset(input: { file: File; filename:
   const signed = await fetchJson<{ ok: boolean; uploadUrl?: string; publicUrl?: string; path?: string; error?: string }>(
     "/api/app-market/assets/sign",
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filename: input.filename, size: input.file.size }) },
-    20000,
   );
   if (!signed.uploadUrl || !signed.path || !signed.publicUrl) throw new Error(signed.error || "无法创建上传凭证");
   const put = await fetch(signed.uploadUrl, {
