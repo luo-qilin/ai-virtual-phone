@@ -955,8 +955,6 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
     } finally {
       setReportSubmitting(false);
     }
-  }
-
     } catch (err) {
       try {
         const { requestCustomAppPackageDownloadUrl } = await import("@/lib/custom-app-market-client");
