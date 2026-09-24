@@ -1895,3 +1895,4 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
     </div>
   );
 }
+}
