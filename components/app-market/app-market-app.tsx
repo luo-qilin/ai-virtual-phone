@@ -954,7 +954,8 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
     } finally {
       setReportSubmitting(false);
     }
-   
+  }
+
   async function installMarketApp(item: CustomAppMarketItem) {
     setMarketBusy(true);
     setMarketError("");
@@ -967,22 +968,12 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
         setSelectedMarketApp(null);
       }
     } catch (err) {
-      try {
-        const url = await requestCustomAppPackageDownloadUrl(item.id);
-        window.location.href = url;
-        setErrorDialog({
-          title: "请用系统下载后导入",
-          message: "手机无法在页面内直接安装大包。已开始下载 zip，完成后回到应用市场，点「导入本地包」选刚下的文件。",
-        });
-      } catch {
-        setMarketError(err instanceof Error ? err.message : String(err));
-      }
+      setMarketError(err instanceof Error ? err.message : String(err));
     } finally {
       setMarketBusy(false);
     }
   }
 
-    
   async function resolveMarketItemForInstalled(appId: string): Promise<CustomAppMarketItem | null> {
     const cached = marketItemByAppId.get(appId);
     if (cached) return cached;
@@ -1893,5 +1884,4 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
       ) : null}
     </div>
   );
-}
 }
