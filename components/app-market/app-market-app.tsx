@@ -40,6 +40,7 @@ import {
   recordCustomAppInstall,
   updateCustomAppMarketItem,
   uploadCustomAppPackageAsset,
+  requestCustomAppPackageDownloadUrl,
   validateCustomAppMarketItem,
 } from "@/lib/custom-app-market-client";
 import type { CustomAppMarketItem } from "@/lib/custom-app-market-types";
