@@ -955,9 +955,20 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
     } finally {
       setReportSubmitting(false);
     }
+   
+  async function installMarketApp(item: CustomAppMarketItem) {
+    setMarketBusy(true);
+    setMarketError("");
+    try {
+      const app = await loadCustomAppMarketPackageApp(item);
+      const installed = await installApp(app);
+      if (installed) {
+        await recordCustomAppInstall(item.id);
+        await refreshMarket();
+        setSelectedMarketApp(null);
+      }
     } catch (err) {
       try {
-        const { requestCustomAppPackageDownloadUrl } = await import("@/lib/custom-app-market-client");
         const url = await requestCustomAppPackageDownloadUrl(item.id);
         window.location.href = url;
         setErrorDialog({
@@ -968,9 +979,11 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
         setMarketError(err instanceof Error ? err.message : String(err));
       }
     } finally {
+      setMarketBusy(false);
     }
   }
 
+    
   async function resolveMarketItemForInstalled(appId: string): Promise<CustomAppMarketItem | null> {
     const cached = marketItemByAppId.get(appId);
     if (cached) return cached;
