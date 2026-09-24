@@ -52,3 +52,11 @@ export async function updateCustomAppMarketItem(input: { id: string; appId?: str
 export async function deleteCustomAppMarketItem(input: { id: string }): Promise<string> { const data = await fetchJson<MarketListResponse>("/api/app-market/apps", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }); return data.app?.id || data.id || input.id; }
 export async function recordCustomAppInstall(appId: string): Promise<void> { await fetchJson<MarketListResponse>("/api/app-market/apps", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: appId, action: "increment_install" }) }).catch(() => undefined); }
 export async function reviewCustomAppMarketItem(input: { adminKey: string; id: string; action: "approve" | "reject" }): Promise<CustomAppMarketItem> { const data = await fetchJson<MarketListResponse>("/api/app-market/apps", { method: "PATCH", headers: { "Content-Type": "application/json", "x-app-market-admin-key": input.adminKey }, body: JSON.stringify({ id: input.id, action: input.action }) }); if (!data.app) throw new Error(data.error || "审核操作失败"); return data.app; }
+export async function requestCustomAppPackageDownloadUrl(id: string): Promise<string> {
+  const data = await fetchJson<{ ok: boolean; url?: string; error?: string }>(
+    "/api/app-market/download",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) },
+  );
+  if (!data.url) throw new Error(data.error || "无法获取下载地址");
+  return data.url;
+}

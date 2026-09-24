@@ -956,21 +956,19 @@ export function AppMarketApp({ onClose, onOpenCustomApp, onInstallToDesktop, onN
     }
   }
 
-  async function installMarketApp(item: CustomAppMarketItem) {
-    setMarketBusy(true);
-    setMarketError("");
-    try {
-      const app = await loadCustomAppMarketPackageApp(item);
-      const installed = await installApp(app);
-      if (installed) {
-        await recordCustomAppInstall(item.id);
-        await refreshMarket();
-        setSelectedMarketApp(null);
-      }
     } catch (err) {
-      setMarketError(err instanceof Error ? err.message : String(err));
+      try {
+        const { requestCustomAppPackageDownloadUrl } = await import("@/lib/custom-app-market-client");
+        const url = await requestCustomAppPackageDownloadUrl(item.id);
+        window.location.href = url;
+        setErrorDialog({
+          title: "请用系统下载后导入",
+          message: "手机无法在页面内直接安装大包。已开始下载 zip，完成后回到应用市场，点「导入本地包」选刚下的文件。",
+        });
+      } catch {
+        setMarketError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setMarketBusy(false);
     }
   }
 
