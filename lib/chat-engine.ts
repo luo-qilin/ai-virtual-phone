@@ -2212,6 +2212,19 @@ async function generateNativeChatCompletion(
         }
         const assistantForToolContext = stripStateAndInnerForPrompt(displayContent);
 
+        {
+            const seenNativeTools = new Set<string>();
+            result = {
+                ...result,
+                toolCalls: result.toolCalls.filter((call) => {
+                    const key = call.name;
+                    if (!key || seenNativeTools.has(key)) return false;
+                    seenNativeTools.add(key);
+                    return true;
+                }).slice(0, 3),
+            };
+        }
+        
         if (result.toolCalls.length === 0) {
             throwIfAborted(options?.signal);
             // 无工具调用的最终轮：把解析到的思维链先交给回调（先于 onTextPart，与非原生路径一致）
