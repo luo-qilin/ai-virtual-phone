@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ChatPluginBootstrap } from "@/components/chat-plugin-bootstrap";
 import { ChatReasoningVisibilityController } from "@/components/chat-reasoning-visibility-controller";
 import { CSSImportEnhancer } from "@/components/css-import-enhancer";
+import { OrientationSync } from "@/components/orientation-sync";
 import { PWAManifestInjector } from "@/components/pwa-manifest-injector";
 import { PWARegistrar } from "@/components/pwa-registrar";
 import "../styles/fonts.css";
@@ -40,6 +41,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body>
+        <OrientationSync />
         <PWAManifestInjector />
         <PWARegistrar />
         <CSSImportEnhancer />
