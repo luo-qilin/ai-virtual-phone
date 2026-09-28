@@ -13,8 +13,8 @@ import { shouldRequestPwaFullscreen } from "@/lib/pwa-display-mode";
  */
 export function AndroidFullscreen() {
   useEffect(() => {
-    const isMobile = window.matchMedia(
-      "(hover: none) and (pointer: coarse) and ((max-width: 500px) or (max-height: 500px))"
+        const isMobile = window.matchMedia(
+      "(hover: none) and (pointer: coarse)"
     ).matches;
     if (!isMobile) return;
 
