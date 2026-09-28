@@ -1457,23 +1457,3 @@
 .folder-dots .dot.active {
   background: color-mix(in srgb, var(--c-home-label, #ffffff) 85%, transparent);
 }
-
-html[data-mobile="1"] {
-  --phone-screen-width: var(--vv-width, 100vw);
-  --phone-screen-height: var(--vv-height, 100lvh);
-}
-
-html[data-mobile="1"],
-html[data-mobile="1"] body,
-html[data-mobile="1"] .app-root,
-html[data-mobile="1"] .app-root.splash-root {
-  width: var(--vv-width, 100vw);
-  height: var(--vv-height, 100lvh);
-  overflow: hidden;
-}
-
-html[data-mobile="1"] .phone-shell-wrap,
-html[data-mobile="1"] .phone-shell {
-  width: var(--phone-screen-width);
-  height: var(--phone-screen-height);
-}
