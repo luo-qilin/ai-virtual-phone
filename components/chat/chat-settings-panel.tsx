@@ -32,7 +32,7 @@ import {
     pruneExpiredGroupMutes,
     type GroupAdminAction,
 } from "@/lib/group-admin";
-import { clearChatOfflineTurns } from "@/lib/chat-offline-storage";
+import { clearChatOfflineTurns, loadChatOfflineTurns } from "@/lib/chat-offline-storage";
 import { removeChatSessionCompletely } from "@/lib/chat-session-remove";
 import { triggerDeleteFriendReaction } from "@/lib/friend-request-engine";
 import { loadCharacters } from "@/lib/character-storage";
@@ -44,7 +44,7 @@ import { downloadFile } from "@/lib/download-utils";
 import { getSchemes, saveScheme, deleteScheme, type CSSScheme } from "@/lib/css-scheme-storage";
 import { CustomStatusFrame } from "@/components/chat/custom-status-frame";
 import { KeyboardAutoSendDebounceItem } from "@/components/chat/keyboard-auto-send-debounce-item";
-import { ChevronRight, Image as ImageIcon, Video, Mic, LogOut, UserMinus, UserPlus, Users, Pin, MessageSquare, Search, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Music, type LucideIcon } from "lucide-react";
+import { ChevronRight, Image as ImageIcon, Video, Mic, LogOut, UserMinus, UserPlus, Users, Pin, MessageSquare, Search, Hash, AlertCircle, Code, Laptop, Trash2, Smile, Sparkles, X, Play, Upload, Download, Save, FolderOpen, Music, type LucideIcon } from "lucide-react";
 import { AMBIENT_SOUND_OPTIONS, startCallAmbient, stopCallAmbient, updateCallAmbientVolume } from "@/lib/call-ambient-sound";
 import { BINDING_ACCENTS, CONTENT_APP_ACCENTS } from "@/lib/ui-accent-colors";
 import CSSSchemeBar from "@/components/ui/css-scheme-picker";
@@ -296,6 +296,14 @@ export function ChatSettingsPanel({
 }: ChatSettingsPanelProps) {
     const [backgroundImage, setBackgroundImage] = useState<string>(session.backgroundImage || "");
     const [alias, setAlias] = useState<string>(session.alias || "");
+    const chatStats = useMemo(() => {
+        const msgs = loadChatMessages(session.id).filter(msg => !isSearchHiddenMessage(msg) && isSearchVisibleMessage(msg));
+        const mine = msgs.filter(msg => msg.role === "user").length;
+        const theirs = msgs.filter(msg => msg.role === "assistant").length;
+        const other = Math.max(0, msgs.length - mine - theirs);
+        const offline = loadChatOfflineTurns(session.id).length;
+        return { total: msgs.length, mine, theirs, other, offline };
+    }, [session.id]);
     const [videoBackground, setVideoBackground] = useState<string>(session.videoBackground || "");
     const [voiceBackground, setVoiceBackground] = useState<string>(session.voiceBackground || "");
     const [isPinned, setIsPinned] = useState(session.isPinned || false);
@@ -879,6 +887,18 @@ export function ChatSettingsPanel({
                         <div className="menu-label-group"><span className="menu-label">查找聊天记录</span></div>
                         <div className="menu-right"><ChevronRight size={16} /></div>
                     </button>
+                    <div className="menu-item" style={{ cursor: "default" }}>
+                        <ChatInfoIcon icon={Hash} color={CONTENT_APP_ACCENTS.chat} />
+                        <div className="menu-label-group">
+                            <span className="menu-label">聊天条数</span>
+                            <span className="menu-desc">
+                                {session.isGroup
+                                    ? `可见 ${chatStats.total} 条 · 我 ${chatStats.mine} · 角色 ${chatStats.theirs}`
+                                    : `可见 ${chatStats.total} 条 · 我 ${chatStats.mine} · 对方 ${chatStats.theirs}`}
+                                {chatStats.offline > 0 ? ` · 线下 ${chatStats.offline} 段` : ""}
+                            </span>
+                        </div>
+                    </div>
                     {!session.isGroup && isAgentComputerConfigured() && (
                         <button className="menu-item" onClick={() => setShowComputer(true)}>
                             <ChatInfoIcon icon={Laptop} color={BINDING_ACCENTS.memory} />
